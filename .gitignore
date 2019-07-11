@@ -1,4 +1,4 @@
-/learning_data/*
+!/learning_data/*.npy
 /learned_data/weight_history/*
 /tflog/*
 /data/*
