@@ -80,8 +80,11 @@ print(train_x.shape,train_y.shape)
 train_x = np.log(train_x)
 train_y = np.log(train_y)
 
-train_x = train_x[0:200,:]
-train_y = train_y[0:200,:]
+#train_x = train_x[20:200,:]
+#train_y = train_y[20:200,:]
+
+print(train_x[0:10,0])
+print(train_y[0:10,0])
 
 #standardization
 mean_x = np.mean(train_x,axis=0)
@@ -120,15 +123,15 @@ t1 = time.time()
 #Hold-Out method for validation
 #モデル作成宣言
 
-input_num = 1
-output_num = 1
-state_num = int(input_num/output_num)
-select = np.array([5])
-seq_in_length = 10
-seq_out_length = 1
-n_hidden = 32
-batch_size = 16
-epochs = 2000
+input_num       = 1
+output_num      = 1
+state_num       = int(input_num/output_num)
+select          = np.array([5])
+seq_in_length   = 40
+seq_out_length  = 1
+n_hidden        = 32
+batch_size      = 16
+epochs          = 2000
 
 time_length = train_x.shape[0]-seq_in_length+1
 X = np.zeros([time_length,seq_in_length,train_x.shape[1]])

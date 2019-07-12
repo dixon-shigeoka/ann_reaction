@@ -46,39 +46,12 @@ state_x = np.array(["temp","pres","H2","O2","H","O","OH","H2O","HO2","H2O2","N2"
 #train_y = np.concatenate([train_y_thermo,train_y_Yi],axis=1)
 train_x = np.log(train_x)
 train_y = np.log(train_y)
-train_x = train_x[0:200,:]
-train_y = train_y[0:200,:]
 
+#train_x = train_x[0:200,:]
+#train_y = train_y[0:200,:]
 
-#######
-#USER DIFINE
-input_num     = 1
-output_num    = 1
-mts_loop      = 1    #base timeからのmts loopの回数
-data_num      = 1   #train_x中で初期値とする状態量の番号
-start         = 0  #検証を開始するstep数
-select        = np.array([5])
-########
-
-state_num = int(input_num/output_num)
-
-
-X = np.zeros([train_x.shape[0]-seq_length+1,seq_length,train_x.shape[1]])
-Y = np.zeros([train_y.shape[0]-seq_length+1,seq_length,train_y.shape[1]])
-print(X.shape)
-
-for i in range(train_x.shape[0]-seq_length+1) :
-    X[i,:seq_length,:] = train_x[i:i+seq_length,:]
-    Y[i,:seq_length,:] = train_y[i:i+seq_length,:]
-
-train_x = train_x[:,select]
-train_y = train_y[:,select]
-state_x = state_x[select]
-
-
-train_x = X[:,:,select] #H mass fraction
-state_x = state_x[select]
-
+print(train_x[0:10,0])
+print(train_y[0:10,0])
 
 #standardization
 mean_x = np.mean(train_x,axis=0)
@@ -97,10 +70,41 @@ train_y = (train_y - mean_y) / std_y
 #train_x = (train_x - min_x)/(max_x - min_x)
 #train_y = (train_y - min_y)/(max_y - min_y)
 
-print(train_y[:,:])
+
+#######
+#USER DIFINE
+input_num     = 1
+output_num    = 1
+state_num     = int(input_num/output_num)
+mts_loop      = 1    #base timeからのmts loopの回数
+data_num      = 1   #train_x中で初期値とする状態量の番号
+start         = 0  #検証を開始するstep数
+select        = np.array([5])
+seq_in_length = 40
+seq_out_length = 1
+########
+
+
+time_length = train_x.shape[0]-seq_in_length+1
+X = np.zeros([time_length,seq_in_length,train_x.shape[1]])
+Y = np.zeros([time_length,seq_out_length,train_y.shape[1]])
+#Y = np.zeros([train_y.shape[0]-seq_length+1,train_y.shape[1]])
+
+for i in range(time_length) :
+    X[i,:seq_in_length,:] = train_x[i:i+seq_in_length,:]
+    Y[i,:seq_out_length,:] = train_y[i:i+seq_out_length,:]
+
+train_x = X[:,:,select] #H mass fraction
+state_x = state_x[select]
+train_y = Y[:,:,select]
+
+
+print(train_x[0:2,:,0])
+print(train_y[0:2,0])
+print(train_x.shape,train_y.shape)
+
 
 t1 = time.time()
-
 
 
 #modelの読み込み
@@ -108,6 +112,7 @@ if (state_num == 1) :
     abspath_weight = abspath + '/learned_model/stanford_weight.hdf5'
     model = model_from_json(open(abspath_model,'r').read())
     model.load_weights(abspath_weight)
+    model.summary()
 else :
     model = dict()
     for i in range(state_num) :
@@ -116,27 +121,27 @@ else :
         print(abspath_model_state,abspath_weight_state)
         model[state_x[i]] = model_from_json(open(abspath_model_state,'r').read())
         model[state_x[i]].load_weights(abspath_weight_state)
+        model[state_x[i]].summary()
 
 
+# predict from evaluated data
 
-#evaluation
+eval_data = np.zeros([1,seq_out_length,output_num])
+train = train_x[(start+data_length[data_num-1]),:,:]
 
-eval_data = np.zeros([1,input_num])
-train = train_x[(start+data_length[data_num-1]),:]
-
-train_int = train.reshape(1,input_num)
+eval_next = train.reshape(1,train_x.shape[1],input_num)
 eval_moment = dict()
 
 if (state_num == 1) :
-    eval_moment = model.predict(train_int)
+    eval_moment = model.predict(eval_next)
 else :
     for i in range(state_num) :
         print(i)
         eval_moment[state_x[i]] = model[state_x[i]].predict(train_int)
         #温度のみ常に正当データ
-        train = train_y[(start+data_length[data_num-1]),0]
-        train = train.reshape(1,1)
-        eval_moment[state_x[0]] = train
+        #train = train_y[(start+data_length[data_num-1]),0]
+        #train = train.reshape(1,1)
+        #eval_moment[state_x[0]] = train
 
 
 data_range = data_length[data_num] - data_length[data_num-1] - 1
@@ -147,13 +152,17 @@ print(train_x.shape,data_length[data_num])
 for ii in range(eval_range) :
 
     if (state_num == 1) :
-        eval_next = eval_moment.reshape(1,output_num)
+        eval_next = np.delete(eval_next,0,1)
+        eval_moment = eval_moment.reshape(1,seq_out_length,output_num)
+        eval_next = np.concatenate([eval_next,eval_moment],axis=1)
         eval_data = np.concatenate([eval_data,eval_moment],axis=0)
 
     else :
         eval_next = np.concatenate([eval_moment[state_x[0]],eval_moment[state_x[1]]],axis=1)
+
         for i in range(state_num - 2) :
             eval_next = np.concatenate([eval_moment,eval_moment[state_x[i+1]]],axis=1)
+
         eval_data = np.concatenate([eval_data,eval_next],axis=0)
 
 
@@ -167,8 +176,13 @@ for ii in range(eval_range) :
             train = train.reshape(1,1)
             eval_moment[state_x[0]] = train
 
+
+# predict from train data
+#eval_data = model.predict(train_x)
+
 t2 = time.time()
 print('eval time is ',t2-t1)
+print(eval_data.shape)
 
 
 #標準化または正規化の再変換
@@ -178,9 +192,9 @@ print('eval time is ',t2-t1)
 #train_x = train_x*(max_x - min_x) + min_x
 
 #standardization
-eval_data = std_y * eval_data + mean_y
-train_y = std_y * train_y + mean_y
-train_x = std_x * train_x + mean_x
+eval_data = std_y[select] * eval_data + mean_y[select]
+train_y   = std_y[select] * train_y   + mean_y[select]
+train_x   = std_x[select] * train_x   + mean_x[select]
 
 
 #exp conversion
@@ -197,19 +211,20 @@ eval_data = np.exp(eval_data)
 train_x = np.exp(train_x)
 
 #train = train_x[(data_length[data_num]),:]
-#print(train)
-print(train_x[0,:])
-print(train_y[0,:])
-#print(eval_data)
+#print(train_x[0,:])
+#print(train_y[0,:])
 
 #train_data = train_x[start*mts_loop::mts_loop,]
 #answer_data = train_y[start*mts_loop::mts_loop,]
 #train_data = train_x[start*mts_loop::mts_loop,:]
-answer_moment = train_y[start+data_length[data_num-1]::mts_loop,:]
-answer_data = answer_moment[0:data_range-start+1,:]
+answer_moment = train_y[start+data_length[data_num-1]::mts_loop,:,:]
+answer_data = answer_moment[0:data_range-start+1,:,:]
 ann_data = np.delete(eval_data,0,axis=0)
+ann_data = ann_data.reshape(ann_data.shape[0],seq_out_length)
+
+print(answer_moment.shape,answer_data.shape,eval_data.shape)
 
 np.savetxt(abspath_eval,ann_data,delimiter=',')
 #np.savetxt(abspath_eval,train_data,delimiter=',')
-np.savetxt(abspath_answer,answer_data,delimiter=',')
+np.savetxt(abspath_answer,answer_data[:,0,:],delimiter=',')
 #np.savetxt(abspath_randt,train_x,delimiter=',')
