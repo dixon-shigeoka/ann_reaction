@@ -127,7 +127,7 @@ select = np.array([5])
 seq_in_length = 10
 seq_out_length = 1
 n_hidden = 32
-batch_size = 8
+batch_size = 16
 epochs = 2000
 
 time_length = train_x.shape[0]-seq_in_length+1
