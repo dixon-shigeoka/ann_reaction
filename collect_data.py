@@ -11,15 +11,14 @@ abspath_length = abspath + '/learning_data/data_length.npy'
 abspath_omega = abspath + '/learning_data/omega_ave.csv'
 
 #ctypesの引数設定
-fn = np.ctypeslib.load_library("mts_make_omega.so",".")
-fn.imtss_omega_.argtypes = [
+fn = np.ctypeslib.load_library("mtsdriver.so",".")
+fn.imtss_.argtypes = [
     c.POINTER(c.c_double),
     c.POINTER(c.c_double),
     np.ctypeslib.ndpointer(dtype=np.float64),
     c.POINTER(c.c_double),
-    np.ctypeslib.ndpointer(dtype=np.float64)
 ]
-fn.imtss_omega_.restype = c.c_void_p
+fn.imtss_.restype = c.c_void_p
 
 
 # chemical_database
@@ -51,6 +50,7 @@ for i in range(1):  #質量分率，温度，密度を変化させるループ(b
     aMi = np.array([2.016,32.000,1.008,16.000,17.008,18.016,33.008,34.016,28.016])
     aMolarRatio = np.array([2,1,0,0,0,0,0,0,0])
     aMolarRatio = np.where(aMolarRatio == 0,aemn,aMolarRatio)
+    aMolarRatio[8] = 0
     aTotalMass = np.dot(aMi,aMolarRatio)
     aMixMolarRatio = np.multiply(aMi,aMolarRatio)
     aYi = aMixMolarRatio/aTotalMass
@@ -70,8 +70,8 @@ for i in range(1):  #質量分率，温度，密度を変化させるループ(b
 
         for ii in range(range_mts):    #deltをパラメータにする分だけmtsを回す
 
-            delt_rand = (np.random.rand(1)*0.5 + 0.5)*delt_mts
-            #delt_rand = delt_mts
+            #delt_rand = (np.random.rand(1)*0.5 + 0.5)*delt_mts
+            delt_rand = delt_mts
             delt_mem = delt_mem + delt_rand #このループ内で回った時間
 
             #入力データを格納
@@ -86,7 +86,7 @@ for i in range(1):  #質量分率，温度，密度を変化させるループ(b
             delt = c.c_double(delt_mem)
 
             #byrefでポインタにして渡す，mtsの実行
-            fn.imtss_omega_(c.byref(dtmp),c.byref(dprs),aYi,c.byref(delt),omega_ave)
+            fn.imtss_(c.byref(dtmp),c.byref(dprs),aYi,c.byref(delt))
             dtmp = dtmp.value
             dprs = dprs.value
             delt = delt.value
@@ -112,7 +112,7 @@ for i in range(1):  #質量分率，温度，密度を変化させるループ(b
         #H2_before = aYi[0,0]
 
         #byrefでポインタにして渡す，mtsの実行
-        fn.imtss_omega_(c.byref(dtmp),c.byref(dprs),aYi,c.byref(delt),omega_ave)
+        fn.imtss_(c.byref(dtmp),c.byref(dprs),aYi,c.byref(delt))
         dtmp = dtmp.value
         dprs = dprs.value
         delt = delt.value

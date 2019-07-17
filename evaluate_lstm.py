@@ -149,12 +149,15 @@ eval_range = data_range/mts_loop - start - 1 #startから最終ステップま�
 eval_range = int(eval_range)
 print(train_x.shape,data_length[data_num])
 
+#for ii in range(eval_range) :
 for ii in range(eval_range) :
 
     if (state_num == 1) :
+        print(eval_next)
         eval_next = np.delete(eval_next,0,1)
         eval_moment = eval_moment.reshape(1,seq_out_length,output_num)
         eval_next = np.concatenate([eval_next,eval_moment],axis=1)
+        print(eval_next)
         eval_data = np.concatenate([eval_data,eval_moment],axis=0)
 
     else :

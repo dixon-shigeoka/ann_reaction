@@ -83,16 +83,18 @@ train_y = np.log(train_y)
 #train_x = train_x[20:200,:]
 #train_y = train_y[20:200,:]
 
-print(train_x[0:10,0])
-print(train_y[0:10,0])
 
 #standardization
 mean_x = np.mean(train_x,axis=0)
-mean_y = np.mean(train_y,axis=0)
+#mean_y = np.mean(train_y,axis=0)
 std_x = np.std(train_x,axis=0)
-std_y = np.std(train_y,axis=0)
+#std_y = np.std(train_y,axis=0)
 train_x = (train_x - mean_x) / std_x
-train_y = (train_y - mean_y) / std_y
+train_y = (train_y - mean_x[0:11]) / std_x[0:11]
+#train_y = (train_y - mean_y) / std_y
+
+print(train_x[0:42,5])
+print(train_y[0:42,5])
 
 #min-max normalize
 #min_x = np.min(train_x,axis=0)
@@ -129,27 +131,28 @@ state_num       = int(input_num/output_num)
 select          = np.array([5])
 seq_in_length   = 40
 seq_out_length  = 1
-n_hidden        = 32
+n_hidden        = 100
 batch_size      = 16
-epochs          = 2000
+epochs          = 10000
 
 time_length = train_x.shape[0]-seq_in_length+1
 X = np.zeros([time_length,seq_in_length,train_x.shape[1]])
 Y = np.zeros([time_length,seq_out_length,train_y.shape[1]])
 #Y = np.zeros([train_y.shape[0]-seq_length+1,train_y.shape[1]])
 
-print(X.shape,Y.shape)
+#print(X.shape,Y.shape)
 
 for i in range(time_length) :
-    X[i,:seq_in_length,:] = train_x[i:i+seq_in_length,:]
-    Y[i,:seq_out_length,:] = train_y[i:i+seq_out_length,:]
+    X[i,:seq_in_length,:]  = train_x[i:i+seq_in_length,:]
+    if (seq_out_length == 1) :
+        Y[i,seq_out_length-1,:] = train_y[i+seq_in_length-1,:]
+        #print(train_y[i+seq_in_length-1,:])
 
 train_x = X[:,:,select] #H mass fraction
 state_x = state_x[select]
 
-print(train_x[0:2,:,0])
-print(train_y[0:2,0])
-print(train_x.shape,Y.shape)
+print("after processing")
+print("train x is ",train_x[0:2,:,0])
 
 #各状態量に対しての個別のモデルを作成するためのループ
 for i in range(state_num) :
@@ -160,6 +163,8 @@ for i in range(state_num) :
         train_y_state = Y[:,:,select[i]] #H mass fraction
 
     train_y_state = train_y_state.reshape([time_length,1])
+    print("Y is ",train_y_state[0:2,0])
+    print(train_x.shape,Y.shape)
     print(train_y_state.shape)
 
 

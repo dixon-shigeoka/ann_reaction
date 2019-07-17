@@ -1,4 +1,4 @@
-subroutine imtss_omega(dtmp,dprs,aYi,delt,omega_ave)
+subroutine imtss_omega(dtmp,dprs,aYi,omegai,totaldens)
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 !
 !
@@ -32,14 +32,17 @@ subroutine imtss_omega(dtmp,dprs,aYi,delt,omega_ave)
   use mod_function
   implicit none
   real(8),parameter :: alim = 1.d0 - 1.d-13
-  real(8), intent(inout) :: dtmp, dprs, aYi(9), omega_ave(9)
-  real(8), intent(in) :: delt
+  !integer, intent(in) :: n
+  !real(8), intent(in),allocatable :: dtmp(:), dprs(:), aYi(:,:)
+  !real(8), intent(out),allocatable :: omegai(:,:), totaldens
+  real(8), intent(in)  :: dtmp, dprs, aYi(9)
+  real(8), intent(out) :: omegai(8), totaldens
   real(8), allocatable :: adns(:), afm(:), ab(:), dml(:), dmlr(:), dmlru(:),       &
        &                  dplh(:,:,:), atmw(:), adns0(:)
 
   real(8) :: at, afmt, aeng, afdd, afd, af, addd, adt, druo, phti, ahti
   real(8) :: atime, atmp, arho, aflag, art, atmpr, atmpl, aptr, adnsr
-  real(8) :: ar, au, av, aw, awk1, awk2, awk3, totaldens
+  real(8) :: ar, au, av, aw, awk1, awk2, awk3
   real(8) :: ae01, ae02h, ae02l, ae03h, ae03l, ae04h, ae04l, ae05h, ae05l,    &
   &          ae06a, ae06b, ae07, ae08a, ae08b, ae09, ae10, ae11, ae12a, ae12b,&
   &          ae13, ae14, ae15, ae16, ae17, ae18, ae19, ae20, ae21, ae22, ae23,&
@@ -256,6 +259,7 @@ subroutine imtss_omega(dtmp,dprs,aYi,delt,omega_ave)
 ! N2
     &  0.35d+01, 0.d0, 0.d0, 0.d0, 0.d0, 0.d0, 0.d0                             &
     &  /), (/7,lsp,3/))
+!---------------------------------------------------
 
   atmp = dtmp
   atmpr = 1/dtmp
@@ -293,7 +297,6 @@ subroutine imtss_omega(dtmp,dprs,aYi,delt,omega_ave)
   aflgm7 = 1.d0 * aflag
   aflgm8 = 1.d0 * aflag
 
-  do m = 1, 1000000    !MTS loop
 
     atmpr = 1.d0 / atmp
 
@@ -924,176 +927,18 @@ subroutine imtss_omega(dtmp,dprs,aYi,delt,omega_ave)
   &                      -ar14 -ar15 -ar16 -ar17 +ar18 +ar20)
       awh2o2 = dml(8) * (-ar05 -ar06 +ar08 -ar18 -ar19 -ar20)
 
-!----------------------------------------------------------------------
-!    MTS method
 
-!    make reaction time scale
-      ath2  = adns(1)*1.d-3*aflgm1/abs(awh2+aeps)                             &
-  &         + 1.d0-aflgm1
-      ato2  = adns(2)*1.d-3*aflgm2/abs(awo2+aeps)                             &
-  &         + 1.d0-aflgm2
-      ath   = adns(3)*1.d-3*aflgm3/abs(awh+aeps)                              &
-  &         + 1.d0-aflgm3
-      ato   = adns(4)*1.d-3*aflgm4/abs(awo+aeps)                              &
-  &         + 1.d0-aflgm4
-      atoh  = adns(5)*1.d-3*aflgm5/abs(awoh+aeps)                             &
-  &         + 1.d0-aflgm5
-      ath2o = adns(6)*1.d-3*aflgm6/abs(awh2o+aeps)                            &
-  &         + 1.d0-aflgm6
-      atho2 = adns(7)*1.d-3*aflgm7/abs(awho2+aeps)                            &
-  &         + 1.d0-aflgm7
-      ath2o2= adns(8)*1.d-3*aflgm8/abs(awh2o2+aeps)                           &
-  &         + 1.d0-aflgm8
+      omegai(1) = awh2
+      omegai(2) = awo2
+      omegai(3) = awh
+      omegai(4) = awo
+      omegai(5) = awoh
+      omegai(6) = awh2o
+      omegai(7) = awho2
+      omegai(8) = awh2o2
 
-!    ignore uninvolved chemical species
-      afg   = a05 + sign(a05, ath2-atmn)
-      ath2  = ath2  *afg + 1.d0-afg
-      afg   = a05 + sign(a05, ato2-atmn)
-      ato2  = ato2  *afg + 1.d0-afg
-      afg   = a05 + sign(a05, ath -atmn)
-      ath   = ath   *afg + 1.d0-afg
-      afg   = a05 + sign(a05, ato -atmn)
-      ato   = ato   *afg + 1.d0-afg
-      afg   = a05 + sign(a05, atoh-atmn)
-      atoh  = atoh  *afg + 1.d0-afg
-      afg   = a05 + sign(a05, ath2o-atmn)
-      ath2o = ath2o *afg + 1.d0-afg
-      afg   = a05 + sign(a05, atho2-atmn)
-      atho2 = atho2 *afg + 1.d0-afg
-      afg   = a05 + sign(a05, ath2o2-atmn)
-      ath2o2= ath2o2*afg + 1.d0-afg
-
-
-!    make minimum reaction time scale
-      adlt1 = 0.8d0*min(ath2,ato2,ath,ato,atoh,ath2o,atho2,ath2o2)
-      adlt2 = max(adlt1,atmn)
-      atmx = delt - atime
-      adlt = min(adlt2,atmx)
-
-      awh2  = adlt*awh2
-      awo2  = adlt*awo2
-      awh   = adlt*awh
-      awo   = adlt*awo
-      awoh  = adlt*awoh
-      awh2o = adlt*awh2o
-      awho2 = adlt*awho2
-      awh2o2= adlt*awh2o2
-
-      adns(1) = adns(1) + aflgm1*awh2
-      adns(2) = adns(2) + aflgm2*awo2
-      adns(3) = adns(3) + aflgm3*awh
-      adns(4) = adns(4) + aflgm4*awo
-      adns(5) = adns(5) + aflgm5*awoh
-      adns(6) = adns(6) + aflgm6*awh2o
-      adns(7) = adns(7) + aflgm7*awho2
-      adns(8) = adns(8) + aflgm8*awh2o2
-
-!---------------------------------------------------------------------
-!    revision
-
-      asgm = 0.0d0
-
-      adns(1:lsp-1) = max(0.d0,adns(1:lsp-1)) ! mass correction
-
-      asgm = sum(adns(1:lsp-1))
-
-      asgm = arho / asgm
-
-      adns(1:lsp-1) = adns(1:lsp-1) * asgm
-
-
-!---------------------------------------------------------------------
-! update temperature
-
-      afm(1:lsp) = adns(1:lsp)*dmlru(1:lsp)
-
-      afmt = sum(afm(:))
-
-      at = atmp
-
-! --------------------
-! newton-rapson method
-! --------------------
-      do i = 1, itr
-
-        itm = 1 + int(a05 + sign(a05,(at - dplt)))
-
-        ab(1) = sum(afm(1:lsp)*dplh(1,1:lsp,itm)) - afmt
-        ab(2) = sum(afm(1:lsp)*dplh(2,1:lsp,itm)) * a12
-        ab(3) = sum(afm(1:lsp)*dplh(3,1:lsp,itm)) * a13
-        ab(4) = sum(afm(1:lsp)*dplh(4,1:lsp,itm)) * a14
-        ab(5) = sum(afm(1:lsp)*dplh(5,1:lsp,itm)) * a15
-        ab(6) = sum(afm(1:lsp)*dplh(6,1:lsp,itm)) + aeng
-
-        afdd = 2.d0*ab(2) + at*( 6.d0*ab(3)                                  &
-        &                 + at*(12.d0*ab(4) + at*(20.d0*ab(5))))
-        afd  = ab(1) + at*(2.d0*ab(2) + at*(3.d0*ab(3)                       &
-        &            + at*(4.d0*ab(4) + at*(5.d0*ab(5)))))
-        af   = at*(ab(1) + at*(ab(2) + at*(ab(3) &
-        &    + at*(ab(4) + at*ab(5)))))  + ab(6)
-
-        addd = afdd*af/afd
-
-        adt  = af/(afd-a05*addd)
-!        adt  = af/afd
-
-        at = at - adt
-        if (abs(adt) < aerr) exit
-
-      end do
-
-      atmp = at
-
-!-----------------------------------------
-! update aflg(i) (, which represents frozen species)
-! -----------------------------------------
-
-    aaa = abs(awh2)-aber
-    abb = abs(awo2)/(adns(2)-awo2+aeps) - arer
-    aflgm2 = a05+ sign(a05,aaa*abb*min(aaa,abb))
-
-    aaa = abs(awh)-aber
-    abb = abs(awh)/(adns(3)-awh+aeps) - arer
-    aflgm3 = a05+ sign(a05,aaa*abb*min(aaa,abb))
-
-    aaa = abs(awo)-aber
-    abb = abs(awo)/(adns(4)-awo+aeps) - arer
-    aflgm4 = a05+ sign(a05,aaa*abb*min(aaa,abb))
-
-    aaa = abs(awoh)-aber
-    abb = abs(awoh)/(adns(5)-awoh+aeps) - arer
-    aflgm5 = a05+ sign(a05,aaa*abb*min(aaa,abb))
-
-    aaa = abs(awh2o)-aber
-    abb = abs(awh2o)/(adns(6)-awh2o+aeps) - arer
-    aflgm6 = a05+ sign(a05,aaa*abb*min(aaa,abb))
-
-    aaa = abs(awho2)-aber
-    abb = abs(awho2)/(adns(7)-awho2+aeps) - arer
-    aflgm7 = a05+ sign(a05,aaa*abb*min(aaa,abb))
-
-    aaa = abs(awh2o2)-aber
-    abb = abs(awh2o2)/(adns(8)-awh2o2+aeps) - arer
-    aflgm8 = a05+ sign(a05,aaa*abb*min(aaa,abb))
-
-!-----------------------------------------------------
-
-    atime = atime + adlt
-
-    if (atime>=delt)exit
-
-    end do
-
-    omega_ave(:) = (adns(:)-adns0(:))/delt
-    aYi(:) = adns(:)/totaldens
-    dtmp = atmp
-    atmw(:) = aYi(:)*dmlr(:)      ! amlf(:)/atw
-    druo    = dru*(sum(atmw(:)))
-    itm = 1 + int(a05 + sign(a05,(atmp - dplt)))
-
-    dprs   = totaldens*druo*atmp
-    !totaldens = dprs*atmpr/druo
-    !totaldens = sum(adns(:))
+      !totaldens = dprs*atmpr/druo
+      !totaldens = sum(adns(:))
 
   deallocate(adns,afm,ab)
 

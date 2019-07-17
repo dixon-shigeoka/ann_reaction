@@ -83,9 +83,6 @@ train_y = np.log(train_y)
 #train_x = train_x[20:200,:]
 #train_y = train_y[20:200,:]
 
-print(train_x[0:10,0])
-print(train_y[0:10,0])
-
 #standardization
 mean_x = np.mean(train_x,axis=0)
 mean_y = np.mean(train_y,axis=0)
