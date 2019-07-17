@@ -27,7 +27,7 @@ class PhysicsInformedNN:
         self.p0_f_min = p0_f[0]
         self.p0_f_len = p0_f[1] - p0_f[0]
 
-        self.t_f = self.t_f_len * np.random.rand(self.N, 1) + self.t_f_min
+        self.t_f   = self.t_f_len * np.random.rand(self.N, 1) + self.t_f_min
         self.T0_f  = self.T0_f_len  * np.random.rand(self.N, 1)  + self.T0_f_min
         self.p0_f  = self.p0_f_len  * np.random.rand(self.N, 1)  + self.p0_f_min
         #self.Yi_f = self.Yi_f_len * nYi.random.rand(self.N, 1) + self.Yi_f_min
@@ -43,7 +43,8 @@ class PhysicsInformedNN:
         self.lb = X.min(axis=0)
         self.ub = X.min(axis=0)
 
-        self.omegai_f = self.make_omegai(self.t_f,self.T0_f,self.p0_f,self.Yi0_f)
+        #self.omegai_f = self.make_omegai(self.t_f,self.T0_f,self.p0_f,self.Yi0_f)
+        self.omegai_f = self.make_omegai_para(self.N, self.t_f, self.T0_f, self.p0_f, self.Yi0_f)
         self.rhoi0_f  = self.make_rhoi0(T0_f,p0_f,Yi0_f)
 
         # Cut N2 mass fraction
@@ -127,6 +128,22 @@ class PhysicsInformedNN:
             dtmp = dtmp.value
             dprs = dprs.value
             totaldens = totaldens.value
+        return omegai
+
+    def make_omegai_para(self, N, t_f, T0_f, p0_f, Yi0_f) :
+        print('in para')
+        omegai = np.zeros([1,self.Yi0_f.shape[1]])
+
+        totaldens = c.c_double(0)
+        N = c.c_int(self.N)
+        delt = self.t_f[:]
+        dtmp = self.T0_f[:]
+        dprs = self.p0_f[:]
+        aYi = self.Yi0_f[0,:]
+
+        #byrefでポインタにして渡す，mtsの実行
+        fn3.imtss_omega_para_(N,delt,dtmp,dprs,aYi,omegai,c.byref(totaldens))
+        totaldens = totaldens.value
         return omegai
 
     def make_rhoi0(self, T0_f, p0_f, Yi0_f) :
@@ -230,6 +247,18 @@ if __name__ == "__main__":
     ]
     fn2.imtss_.restype = c.c_void_p
 
+    fn3 = np.ctypeslib.load_library("mts_make_omega_para.so",".")
+    fn3.imtss_omega_para_.argtypes = [
+        c.POINTER(c.c_int),
+        np.ctypeslib.ndpointer(dtype=np.float64),
+        np.ctypeslib.ndpointer(dtype=np.float64),
+        np.ctypeslib.ndpointer(dtype=np.float64),
+        np.ctypeslib.ndpointer(dtype=np.float64),
+        np.ctypeslib.ndpointer(dtype=np.float64),
+        c.POINTER(c.c_double)
+    ]
+    fn3.imtss_omega_para_.restype = c.c_void_p
+
 
     #パスの指定
     abspath = os.path.dirname(os.path.abspath(__file__))
@@ -241,7 +270,6 @@ if __name__ == "__main__":
     abspath_model_mass = abspath + '/learned_model/mass_model.json'
     abspath_weight_mass = abspath + '/learned_model/mass_weight.hdf5'
     abspath_tflog = abspath + '/tflog/'
-    print(abspath_x)
 
     # MTS training dataの読み込み
     #print('train_y',train_y)
@@ -286,14 +314,14 @@ if __name__ == "__main__":
     N_u = 1
     N = 300
     N_train = 0
-    t_f = [0,3.4e-5]
+    t_f = [0,1e-5]
     layers = [20] * 8
     layers = [11, *layers, 8]
 
     #T  = train_x[0,0:1 ]
     #p  = train_x[0,1:2 ]
-    T  = [1200, 1500]
-    p  = [1e5, 2e5 ]
+    T  = [1190, 1210]
+    p  = [1.01e5, 1.016e5 ]
     Yi = train_x[0,2:11]
     Exact = np.real(train_y)
     model = PhysicsInformedNN(N, t_f, T, p, Yi, layers)

@@ -4,7 +4,7 @@
 
 ISTDIR = ../
 OBJDIR = ./lib
-NAME   = mtsdriver.so
+NAME   = mts_make_omega_para.so
 TARGET = $(ISTDIR)/$(NAME)
 FC = ifort
 #FC = gfortran
@@ -17,8 +17,8 @@ ifeq ($(FC),ifort) #compile options for ifort
   #FFLAGS = -O2 -xHOST -module $(OBJDIR) -fpp
   FFLAGS = -O2  -module $(OBJDIR) -fpp/
   FFLAGS+= -ipo -inline-level=2 -inline-forceinline      # inline expansion
-  FFLAGS+= -parallel -openmp                             # parallel calculation
-  FFLAGS+= -shared -fPIC
+  FFLAGS+= -parallel -fopenmp                             # parallel calculation
+  FFLAGS+= -shared -fPIC -lgomp
   #FFLAGS+= -module $(OBJDIR) -fpp
   #FFLAGS+= -simd # force vectorize at !DIR$ SIMD, may slow down in para cal.
   FFLAGS+= -mcmodel=large -shared-intel # use CPU memory of 2GB or more
@@ -57,7 +57,7 @@ ifeq ($(DEBUGOMP),on) #make all DEBUGOMP=on (command line)
 endif
 
 FOBJ+= mod_parameter.o         mod_globals.o                    \
-       mod_function.o          imtss.o        \
+       mod_function.o          imtss_omega_para.o        \
 
 .SUFFIXES : .o .f90
 
