@@ -6,6 +6,7 @@ import time
 import ctypes as c
 import time
 import os
+import sys
 
 np.random.seed(1234)
 tf.set_random_seed(1234)
@@ -33,7 +34,7 @@ class PhysicsInformedNN:
         #self.Yi_f = self.Yi_f_len * nYi.random.rand(self.N, 1) + self.Yi_f_min
         #self.T0_f  = T0_f  * np.ones([N,1])
         #self.p0_f  = p0_f  * np.ones([N,1])
-        self.Yi0_f = Yi0_f * np.ones([N,1])
+        self.Yi0_f = np.dot(np.ones([N,1]),Yi0_f)
         #print(self.t_f.dtype,self.t_f.dtype,self.p0_f.dtype)
         #print(self.t_f.shape,self.t_f.shape,self.p0_f.shape)
         #self.X = np.concatenate([self.t_f,self.T0_f,self.p0_f],axis=1)
@@ -42,6 +43,10 @@ class PhysicsInformedNN:
         X = np.concatenate([self.t_f,self.T0_f,self.p0_f],axis=1)
         self.lb = X.min(axis=0)
         self.ub = X.min(axis=0)
+
+        #print(np.dot(np.ones([N,1]),Yi0_f).shape)
+        #print(np.dot(np.ones([N,1]),Yi0_f))
+        #sys.exit()
 
         #self.omegai_f = self.make_omegai(self.t_f,self.T0_f,self.p0_f,self.Yi0_f)
         self.omegai_f = self.make_omegai_para(self.N, self.t_f, self.T0_f, self.p0_f, self.Yi0_f)
@@ -134,15 +139,16 @@ class PhysicsInformedNN:
         print('in para')
         omegai = np.zeros([1,self.Yi0_f.shape[1]])
 
-        totaldens = c.c_double(0)
         N = c.c_int(self.N)
         delt = self.t_f[:]
         dtmp = self.T0_f[:]
         dprs = self.p0_f[:]
-        aYi = self.Yi0_f[0,:]
+        aYi = self.Yi0_f[:,:]
+        totaldens = c.c_double(0)
 
         #byrefでポインタにして渡す，mtsの実行
-        fn3.imtss_omega_para_(N,delt,dtmp,dprs,aYi,omegai,c.byref(totaldens))
+        #多次元配列はFortranに渡した際に転置されるので注意
+        fn3.imtss_omega_para_(c.byref(N),delt,dtmp,dprs,aYi,omegai,c.byref(totaldens))
         totaldens = totaldens.value
         return omegai
 
@@ -311,7 +317,7 @@ if __name__ == "__main__":
     #train_y = (train_y - min_y)/(max_y - min_y)
 
 
-    N_u = 1
+    #N_u = 1
     N = 300
     N_train = 0
     t_f = [0,1e-5]
@@ -323,6 +329,7 @@ if __name__ == "__main__":
     T  = [1190, 1210]
     p  = [1.01e5, 1.016e5 ]
     Yi = train_x[0,2:11]
+    Yi = Yi.reshape(1,9)
     Exact = np.real(train_y)
     model = PhysicsInformedNN(N, t_f, T, p, Yi, layers)
 

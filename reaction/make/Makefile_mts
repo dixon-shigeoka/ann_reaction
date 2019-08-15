@@ -4,10 +4,10 @@
 
 ISTDIR = ../
 OBJDIR = ./lib
-NAME   = mts_make_omega_para.so
+NAME   = mtsdriver.so
 TARGET = $(ISTDIR)/$(NAME)
-#FC = ifort
-FC = gfortran
+FC = ifort
+#FC = gfortran
 DEBUG =
 DEBUGOMP =
 FFLAGS =
@@ -38,7 +38,6 @@ ifeq ($(FC),gfortran) #compile options for gfortran
   FFLAGS+= -fbacktrace -g                                # for debug
   FFLAGS+= -Wall -fbounds-check -Wuninitialized                               \
            -ffpe-trap=invalid,zero,overflow               # for debug
-  FFLAGS+= -shared -fPIC -lgomp
   DFLAGS = -cpp -MMD -MG
 endif
 
@@ -58,7 +57,7 @@ ifeq ($(DEBUGOMP),on) #make all DEBUGOMP=on (command line)
 endif
 
 FOBJ+= mod_parameter.o         mod_globals.o                    \
-       mod_function.o          imtss_omega_para.o        \
+       mod_function.o          imtss.o        \
 
 .SUFFIXES : .o .f90
 
