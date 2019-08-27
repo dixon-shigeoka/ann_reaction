@@ -290,6 +290,10 @@ subroutine imtss(dtmp,dprs,aYi,delt)
   aflgm7 = 1.d0 * aflag
   aflgm8 = 1.d0 * aflag
 
+  write(6,*) "before Loop totaldens", totaldens
+  write(6,*) "before Loop tmp", atmp
+  write(6,*) "before Loop adns", adns(:)
+
   do m = 1, 1000000    !MTS loop
 
     atmpr = 1.d0 / atmp
@@ -1040,6 +1044,7 @@ subroutine imtss(dtmp,dprs,aYi,delt)
       end do
 
       atmp = at
+!      write(6,*) "after newton", m, awh2, awo2
 
 !-----------------------------------------
 ! update aflg(i) (, which represents frozen species)
@@ -1080,6 +1085,8 @@ subroutine imtss(dtmp,dprs,aYi,delt)
     if (atime>=delt)exit
 
     end do
+
+    write(6,*) "after mts", m, atmp
 
     aYi(:) = adns(:)/totaldens
     dtmp = atmp

@@ -8,7 +8,6 @@ abspath = os.path.dirname(os.path.abspath(__file__))
 abspath_x = abspath + '/learning_data/train_x.npy'
 abspath_y = abspath + '/learning_data/train_y.npy'
 abspath_length = abspath + '/learning_data/data_length.npy'
-abspath_omega = abspath + '/learning_data/omega_ave.csv'
 
 #ctypesの引数設定
 fn = np.ctypeslib.load_library("mtsdriver.so",".")
@@ -136,5 +135,5 @@ train_y = np.delete(train_y,0,0)
 np.save(abspath_x,train_x)
 np.save(abspath_y,train_y)
 np.save(abspath_length,data_length)
-#np.savetxt(abspath_omega,omega_ave_data,delimiter=',')
-
+abspath_temp = abspath + '/learning_data/temp_%s.csv' % delt_mts
+np.savetxt(abspath_temp,train_x[:,0],delimiter=',')

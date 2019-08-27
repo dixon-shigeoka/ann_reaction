@@ -44,19 +44,19 @@ class PhysicsInformedNN:
         self.lb = X.min(axis=0)
         self.ub = X.min(axis=0)
 
-        #print(np.dot(np.ones([N,1]),Yi0_f).shape)
-        #print(np.dot(np.ones([N,1]),Yi0_f))
-        #sys.exit()
 
-        #self.omegai_f = self.make_omegai(self.t_f,self.T0_f,self.p0_f,self.Yi0_f)
-        self.omegai_f = self.make_omegai_para(self.N, self.t_f, self.T0_f, self.p0_f, self.Yi0_f)
+        self.omegai_f = self.make_omegai_single(self.N, self.t_f, self.T0_f, self.p0_f, self.Yi0_f)
+        #self.omegai_f = self.make_omegai_para(self.N, self.t_f, self.T0_f, self.p0_f, self.Yi0_f)
         self.rhoi0_f  = self.make_rhoi0(T0_f,p0_f,Yi0_f)
 
+        print('3')
         # Cut N2 mass fraction
         self.Yi0_f = np.delete(self.Yi0_f,-1,axis=1)
         self.omegai_f = np.delete(self.omegai_f,-1,axis=1)
         self.rhoi0_f = np.delete(self.rhoi0_f,-1,axis=1)
 
+        print(omegai_f)
+        sys.exit()
 
         # Initialize NNs
         self.layers = layers
@@ -114,29 +114,8 @@ class PhysicsInformedNN:
         xavier_stddev = np.sqrt(2/(in_dim + out_dim))
         return tf.Variable(tf.truncated_normal([in_dim, out_dim], stddev=xavier_stddev), dtype=tf.float32)
 
-    def make_omegai(self, t_f, T0_f, p0_f, Yi0_f) :
-        omegai = np.zeros([1,self.Yi0_f.shape[1]])
-
-        for i in range (self.t_f.shape[0]) :
-            print(i ,"/", self.t_f.shape[0])
-            dtmp = c.c_double(self.T0_f[i])
-            dprs = c.c_double(self.p0_f[i])
-            delt = c.c_double(self.t_f[i])
-            totaldens = c.c_double(0)
-            aYi = self.Yi0_f[i,:]
-
-            #byrefでポインタにして渡す，mtsの実行
-            fn2.imtss_(c.byref(dtmp),c.byref(dprs),aYi,c.byref(delt))
-
-            #byrefでポインタにして渡す，mtsの実行
-            fn1.imtss_omega_(c.byref(dtmp),c.byref(dprs),aYi,omegai,c.byref(totaldens))
-            dtmp = dtmp.value
-            dprs = dprs.value
-            totaldens = totaldens.value
-        return omegai
-
-    def make_omegai_para(self, N, t_f, T0_f, p0_f, Yi0_f) :
-        print('in para')
+    def make_omegai_single(self, N, t_f, T0_f, p0_f, Yi0_f) :
+        print('in make_omega_single')
         omegai = np.zeros([1,self.Yi0_f.shape[1]])
 
         N = c.c_int(self.N)
@@ -148,21 +127,43 @@ class PhysicsInformedNN:
 
         #byrefでポインタにして渡す，mtsの実行
         #多次元配列はFortranに渡した際に転置されるので注意
-        fn3.imtss_omega_para_(c.byref(N),delt,dtmp,dprs,aYi,omegai,c.byref(totaldens))
+        fn1.imtss_omega_single_(c.byref(N),delt,dtmp,dprs,aYi,omegai,c.byref(totaldens))
         totaldens = totaldens.value
         return omegai
 
-    def make_rhoi0(self, T0_f, p0_f, Yi0_f) :
+    def make_omegai_para(self, N, t_f, T0_f, p0_f, Yi0_f) :
+        print('in make_omega_para')
         omegai = np.zeros([1,self.Yi0_f.shape[1]])
-        rhoi0 = np.zeros([self.Yi0_f.shape[0],self.Yi0_f.shape[1]])
+
+        N = c.c_int(self.N)
+        delt = self.t_f[:]
+        dtmp = self.T0_f[:]
+        dprs = self.p0_f[:]
+        aYi = self.Yi0_f[:,:]
         totaldens = c.c_double(0)
-        dtmp = c.c_double(T0_f[0])     #ctypes形式でラップ
-        dprs = c.c_double(p0_f[0])
 
         #byrefでポインタにして渡す，mtsの実行
-        fn1.imtss_omega_(c.byref(dtmp),c.byref(dprs),Yi,omegai,c.byref(totaldens))
-        dtmp = dtmp.value
-        dprs = dprs.value
+        #多次元配列はFortranに渡した際に転置されるので注意
+        fn2.imtss_omega_para_(c.byref(N),delt,dtmp,dprs,aYi,omegai,c.byref(totaldens))
+        totaldens = totaldens.value
+        return omegai
+
+#    def make_rhoi0(self, T0_f, p0_f, Yi0_f) :
+#        omegai = np.zeros([1,self.Yi0_f.shape[1]])
+#        rhoi0 = np.zeros([self.Yi0_f.shape[0],self.Yi0_f.shape[1]])
+#        totaldens = c.c_double(0)
+#        dtmp = c.c_double(T0_f[0])     #ctypes形式でラップ
+#        dprs = c.c_double(p0_f[0])
+#
+#        #byrefでポインタにして渡す，mtsの実行
+#        fn1.imtss_omega_(c.byref(dtmp),c.byref(dprs),Yi,omegai,c.byref(totaldens))
+#        dtmp = dtmp.value
+#        dprs = dprs.value
+#        totaldens = totaldens.value
+#        rhoi0[0:self.Yi0_f.shape[0],:] = Yi * totaldens
+#        return rhoi0
+
+    def make_rhoi0(self, T0_f, p0_f, Yi0_f, totaldens) :
         totaldens = totaldens.value
         rhoi0[0:self.Yi0_f.shape[0],:] = Yi * totaldens
         return rhoi0
@@ -234,27 +235,8 @@ class PhysicsInformedNN:
 if __name__ == "__main__":
 
     #ctypesの引数設定
-    fn1 = np.ctypeslib.load_library("mts_make_omega.so",".")
-    fn1.imtss_omega_.argtypes = [
-        c.POINTER(c.c_double),
-        c.POINTER(c.c_double),
-        np.ctypeslib.ndpointer(dtype=np.float64),
-        np.ctypeslib.ndpointer(dtype=np.float64),
-        c.POINTER(c.c_double),
-    ]
-    fn1.imtss_omega_.restype = c.c_void_p
-
-    fn2 = np.ctypeslib.load_library("mtsdriver.so",".")
-    fn2.imtss_.argtypes = [
-        c.POINTER(c.c_double),
-        c.POINTER(c.c_double),
-        np.ctypeslib.ndpointer(dtype=np.float64),
-        c.POINTER(c.c_double),
-    ]
-    fn2.imtss_.restype = c.c_void_p
-
-    fn3 = np.ctypeslib.load_library("mts_make_omega_para.so",".")
-    fn3.imtss_omega_para_.argtypes = [
+    fn1 = np.ctypeslib.load_library("mts_make_omega_single.so",".")
+    fn1.imtss_omega_single_.argtypes = [
         c.POINTER(c.c_int),
         np.ctypeslib.ndpointer(dtype=np.float64),
         np.ctypeslib.ndpointer(dtype=np.float64),
@@ -263,7 +245,19 @@ if __name__ == "__main__":
         np.ctypeslib.ndpointer(dtype=np.float64),
         c.POINTER(c.c_double)
     ]
-    fn3.imtss_omega_para_.restype = c.c_void_p
+    fn1.imtss_omega_single_.restype = c.c_void_p
+
+    fn2 = np.ctypeslib.load_library("mts_make_omega_para.so",".")
+    fn2.imtss_omega_para_.argtypes = [
+        c.POINTER(c.c_int),
+        np.ctypeslib.ndpointer(dtype=np.float64),
+        np.ctypeslib.ndpointer(dtype=np.float64),
+        np.ctypeslib.ndpointer(dtype=np.float64),
+        np.ctypeslib.ndpointer(dtype=np.float64),
+        np.ctypeslib.ndpointer(dtype=np.float64),
+        c.POINTER(c.c_double)
+    ]
+    fn2.imtss_omega_para_.restype = c.c_void_p
 
 
     #パスの指定
@@ -320,7 +314,7 @@ if __name__ == "__main__":
     #N_u = 1
     N = 300
     N_train = 0
-    t_f = [0,1e-5]
+    t_f = [0,3e-5]
     layers = [20] * 8
     layers = [11, *layers, 8]
 

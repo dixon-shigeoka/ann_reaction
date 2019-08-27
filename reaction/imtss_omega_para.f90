@@ -314,7 +314,7 @@ subroutine imtss_omega_para(n,delt,dtmp,dprs,aYi,omegai,totaldens)
     totaldens = dprs(ii)*atmpr/druo
 
     adns(:) = aYi(:,ii)*totaldens
-    adns0(:) = adns(:)
+!    adns0(:) = adns(:)
     arho    = sum(adns(1:lsp-1))
     adnsr   = 1.d0 / arho
 
@@ -339,6 +339,7 @@ subroutine imtss_omega_para(n,delt,dtmp,dprs,aYi,omegai,totaldens)
 
     write(6,*) "before Loop totaldens", totaldens
     write(6,*) "before Loop tmp", atmp
+    write(6,*) "before Loop aeng", aeng
     write(6,*) "before Loop delt", delt(ii)
 
     do m = 1, 1000000 !MTS Loop
@@ -1090,6 +1091,7 @@ subroutine imtss_omega_para(n,delt,dtmp,dprs,aYi,omegai,totaldens)
       end do
 
       atmp = at
+      write(6,*) "after newton", m, awh2, awo2
 
 !-----------------------------------------
 ! update aflg(i) (, which represents frozen species)
@@ -1135,53 +1137,11 @@ subroutine imtss_omega_para(n,delt,dtmp,dprs,aYi,omegai,totaldens)
 
     end do  !MTS Loop End
 
-
-!!---------------------------------------------------------------------
-!! update temperature
-!
-!      afm(1:lsp) = adns(1:lsp)*dmlru(1:lsp)
-!
-!      afmt = sum(afm(:))
-!
-!      at = atmp
-!
-!! --------------------
-!! newton-rapson method
-!! --------------------
-!      do i = 1, itr
-!
-!        itm = 1 + int(a05 + sign(a05,(at - dplt)))
-!
-!        ab(1) = sum(afm(1:lsp)*dplh(1,1:lsp,itm)) - afmt
-!        ab(2) = sum(afm(1:lsp)*dplh(2,1:lsp,itm)) * a12
-!        ab(3) = sum(afm(1:lsp)*dplh(3,1:lsp,itm)) * a13
-!        ab(4) = sum(afm(1:lsp)*dplh(4,1:lsp,itm)) * a14
-!        ab(5) = sum(afm(1:lsp)*dplh(5,1:lsp,itm)) * a15
-!        ab(6) = sum(afm(1:lsp)*dplh(6,1:lsp,itm)) + aeng
-!
-!        afdd = 2.d0*ab(2) + at*( 6.d0*ab(3)                                  &
-!        &                 + at*(12.d0*ab(4) + at*(20.d0*ab(5))))
-!        afd  = ab(1) + at*(2.d0*ab(2) + at*(3.d0*ab(3)                       &
-!        &            + at*(4.d0*ab(4) + at*(5.d0*ab(5)))))
-!        af   = at*(ab(1) + at*(ab(2) + at*(ab(3) &
-!        &    + at*(ab(4) + at*ab(5)))))  + ab(6)
-!
-!        addd = afdd*af/afd
-!
-!        adt  = af/(afd-a05*addd)
-!!        adt  = af/afd
-!
-!        at = at - adt
-!        if (abs(adt) < aerr) exit
-!
-!      end do
-
-      write(6,*) "after MTS", atime, m, at
+    write(6,*) "after MTS", atime, m, atmp
 
 
 
     ! make omega at t
-    atmp = at
     atmw(:) = adns(:)*dmlr(:)/totaldens      ! amlf(:)/atw
     druo    = dru*(sum(atmw(:)))
     itm = 1 + int(a05 + sign(a05,(atmp - dplt)))
