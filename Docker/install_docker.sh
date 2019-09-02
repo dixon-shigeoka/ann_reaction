@@ -1,6 +1,6 @@
 #install_docker.sh
-#Docker and nVidia-Docker installer
-#Please install nVidia-Driver before execution of this script.
+#Docker and NVIDIA-Docker installer
+#Please install NVIDIA-Driver before execution of this script.
 
 #Docker install
 sudo apt-get update
@@ -11,7 +11,7 @@ sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubun
 sudo apt-get update
 sudo apt-get install docker-ce docker-ce-cli containerd.io
 
-#nVidia-Docker install
+#NVIDIA-Docker install
 curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | \
 sudo apt-key add -
 curl -s -L https://nvidia.github.io/nvidia-docker/ubuntu16.04/amd64/nvidia-docker.list | \

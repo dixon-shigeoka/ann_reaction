@@ -235,7 +235,7 @@ class PhysicsInformedNN:
 if __name__ == "__main__":
 
     #ctypesの引数設定
-    fn1 = np.ctypeslib.load_library("mts_make_omega_single.so","/home/shigeoka/src/ann_reaction")
+    fn1 = np.ctypeslib.load_library("mts_make_omega_single.so",".")
     fn1.imtss_omega_single_.argtypes = [
         c.POINTER(c.c_int),
         np.ctypeslib.ndpointer(dtype=np.float64),
