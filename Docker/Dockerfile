@@ -4,7 +4,8 @@ FROM tensorflow/tensorflow:latest-gpu-py3
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
     gfortran \
-    libgfortran3
+    libgfortran3 \
+    libifport.so.5
 
 #RUN mkdir -p /usr/src/app
 #WORKDIR /usr/src/app

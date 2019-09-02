@@ -10,7 +10,8 @@ import sys
 
 np.random.seed(1234)
 tf.set_random_seed(1234)
-
+#numpy配列でprintした際に表示上の桁落ちを防ぐ
+#np.set_printoptions(precision=15)
 
 class PhysicsInformedNN:
     # Initialize the class
@@ -45,18 +46,14 @@ class PhysicsInformedNN:
         self.ub = X.min(axis=0)
 
 
-        self.omegai_f = self.make_omegai_single(self.N, self.t_f, self.T0_f, self.p0_f, self.Yi0_f)
-        #self.omegai_f = self.make_omegai_para(self.N, self.t_f, self.T0_f, self.p0_f, self.Yi0_f)
-        self.rhoi0_f  = self.make_rhoi0(T0_f,p0_f,Yi0_f)
+        self.omegai_f, self.totaldens = self.make_omegai(self.N, self.t_f, self.T0_f, self.p0_f, self.Yi0_f)
+        self.rhoi0_f  = self.make_rhoi0(self.Yi0_f, self.totaldens)
 
-        print('3')
         # Cut N2 mass fraction
         self.Yi0_f = np.delete(self.Yi0_f,-1,axis=1)
-        self.omegai_f = np.delete(self.omegai_f,-1,axis=1)
         self.rhoi0_f = np.delete(self.rhoi0_f,-1,axis=1)
 
-        print(omegai_f)
-        sys.exit()
+        print(self.Yi0_f.shape, self.rhoi0_f.shape, self.p0_f.shape, self.T0_f.shape)
 
         # Initialize NNs
         self.layers = layers
@@ -66,14 +63,14 @@ class PhysicsInformedNN:
         self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True,
                                                      log_device_placement=True))
 
-        self.t0_tf = tf.placeholder(tf.float32, shape=[None, self.t0.shape[1]])
-        self.T0_tf = tf.placeholder(tf.float32, shape=[None, self.T0_f.shape[1]])
-        self.p0_tf = tf.placeholder(tf.float32, shape=[None, self.p0_f.shape[1]])
-        self.Yi0_tf = tf.placeholder(tf.float32, shape=[None, self.Yi0_f.shape[1]])
-        self.rhoi0_tf = tf.placeholder(tf.float32, shape=[None, self.rhoi0_f.shape[1]])
+        self.t0_tf = tf.placeholder(tf.float64, shape=[None, self.t0.shape[1]])
+        self.T0_tf = tf.placeholder(tf.float64, shape=[None, self.T0_f.shape[1]])
+        self.p0_tf = tf.placeholder(tf.float64, shape=[None, self.p0_f.shape[1]])
+        self.Yi0_tf = tf.placeholder(tf.float64, shape=[None, self.Yi0_f.shape[1]])
+        self.rhoi0_tf = tf.placeholder(tf.float64, shape=[None, self.rhoi0_f.shape[1]])
 
-        self.t_f_tf = tf.placeholder(tf.float32, shape=[None, self.t_f.shape[1]])
-        self.omegai_f_tf = tf.placeholder(tf.float32, shape=[None, self.omegai_f.shape[1]])
+        self.t_f_tf = tf.placeholder(tf.float64, shape=[None, self.t_f.shape[1]])
+        self.omegai_f_tf = tf.placeholder(tf.float64, shape=[None, self.omegai_f.shape[1]])
 
         self.rhoi0_pred = self.net_u(self.t0_tf, self.T0_tf, self.p0_tf, self.Yi0_tf)
         self.f_pred = self.net_f(self.t_f_tf, self.T0_tf, self.p0_tf, self.Yi0_tf, self.omegai_f_tf)
@@ -103,7 +100,7 @@ class PhysicsInformedNN:
         num_layers = len(layers)
         for l in range(0,num_layers-1):
             W = self.xavier_init(size=[layers[l], layers[l+1]])
-            b = tf.Variable(tf.zeros([1,layers[l+1]], dtype=tf.float32), dtype=tf.float32)
+            b = tf.Variable(tf.zeros([1,layers[l+1]], dtype=tf.float64), dtype=tf.float64)
             weights.append(W)
             biases.append(b)
         return weights, biases
@@ -112,60 +109,25 @@ class PhysicsInformedNN:
         in_dim = size[0]
         out_dim = size[1]
         xavier_stddev = np.sqrt(2/(in_dim + out_dim))
-        return tf.Variable(tf.truncated_normal([in_dim, out_dim], stddev=xavier_stddev), dtype=tf.float32)
+        return tf.Variable(tf.truncated_normal([in_dim, out_dim], stddev=xavier_stddev), dtype=tf.float64)
 
-    def make_omegai_single(self, N, t_f, T0_f, p0_f, Yi0_f) :
-        print('in make_omega_single')
-        omegai = np.zeros([1,self.Yi0_f.shape[1]])
-
-        N = c.c_int(self.N)
-        delt = self.t_f[:]
-        dtmp = self.T0_f[:]
-        dprs = self.p0_f[:]
-        aYi = self.Yi0_f[:,:]
-        totaldens = c.c_double(0)
-
-        #byrefでポインタにして渡す，mtsの実行
-        #多次元配列はFortranに渡した際に転置されるので注意
-        fn1.imtss_omega_single_(c.byref(N),delt,dtmp,dprs,aYi,omegai,c.byref(totaldens))
-        totaldens = totaldens.value
-        return omegai
-
-    def make_omegai_para(self, N, t_f, T0_f, p0_f, Yi0_f) :
-        print('in make_omega_para')
-        omegai = np.zeros([1,self.Yi0_f.shape[1]])
+    def make_omegai(self, N, t_f, T0_f, p0_f, Yi0_f) :
+        omegai = np.zeros([self.N,self.Yi0_f.shape[1]-1])
+        totaldens = np.zeros([self.N,1])
 
         N = c.c_int(self.N)
         delt = self.t_f[:]
         dtmp = self.T0_f[:]
         dprs = self.p0_f[:]
         aYi = self.Yi0_f[:,:]
-        totaldens = c.c_double(0)
 
         #byrefでポインタにして渡す，mtsの実行
         #多次元配列はFortranに渡した際に転置されるので注意
-        fn2.imtss_omega_para_(c.byref(N),delt,dtmp,dprs,aYi,omegai,c.byref(totaldens))
-        totaldens = totaldens.value
-        return omegai
+        fn1.imtss_omega_(c.byref(N),delt,dtmp,dprs,aYi,omegai,totaldens)
+        return omegai, totaldens
 
-#    def make_rhoi0(self, T0_f, p0_f, Yi0_f) :
-#        omegai = np.zeros([1,self.Yi0_f.shape[1]])
-#        rhoi0 = np.zeros([self.Yi0_f.shape[0],self.Yi0_f.shape[1]])
-#        totaldens = c.c_double(0)
-#        dtmp = c.c_double(T0_f[0])     #ctypes形式でラップ
-#        dprs = c.c_double(p0_f[0])
-#
-#        #byrefでポインタにして渡す，mtsの実行
-#        fn1.imtss_omega_(c.byref(dtmp),c.byref(dprs),Yi,omegai,c.byref(totaldens))
-#        dtmp = dtmp.value
-#        dprs = dprs.value
-#        totaldens = totaldens.value
-#        rhoi0[0:self.Yi0_f.shape[0],:] = Yi * totaldens
-#        return rhoi0
-
-    def make_rhoi0(self, T0_f, p0_f, Yi0_f, totaldens) :
-        totaldens = totaldens.value
-        rhoi0[0:self.Yi0_f.shape[0],:] = Yi * totaldens
+    def make_rhoi0(self, Yi0_f, totaldens) :
+        rhoi0 = self.Yi0_f * totaldens
         return rhoi0
 
     def neural_net(self, X, weights, biases):
@@ -183,7 +145,6 @@ class PhysicsInformedNN:
         return Y
 
     def net_u(self, t, T, p, Yi):
-
         rhoi = self.neural_net(tf.concat([t,T,p,Yi],axis=1), self.weights, self.biases)
         return rhoi
 
@@ -200,7 +161,7 @@ class PhysicsInformedNN:
     def train(self, nIter):
         tf_dict = {self.t0_tf: self.t0, self.T0_tf: self.T0_f, self.p0_tf: self.p0_f,
                    self.Yi0_tf: self.Yi0_f, self.rhoi0_tf: self.rhoi0_f,
-                   self.t_f_tf: self.t_f, self.omegai_f_tf: self.omegai_f, }
+                   self.t_f_tf: self.t_f, self.omegai_f_tf: self.omegai_f}
 
         start_time = time.time()
 
@@ -220,12 +181,12 @@ class PhysicsInformedNN:
                                 fetches = [self.loss],
                                 loss_callback = self.callback)
 
-
     def predict(self, t, T0, p0, Yi0):
-
-        tf_dict = {self.t_tf: self.t_f, self.T0_tf: self.T0_f, self.p0_tf: self.p0_f,
-                   self.Yi0_tf: self.Yi0_f}
-        rhoi, _ = self.sess.run(self.rhoi0_pred,tf_dict)
+        t = np.expand_dims(t, axis=1)
+        T0 = np.expand_dims(T0, axis=1)
+        p0 = np.expand_dims(p0, axis=1)
+        tf_dict = {self.t_f_tf:t, self.T0_tf:T0, self.p0_tf:p0,self.Yi0_tf:Yi0}
+        rhoi_pred = self.sess.run(self.rhoi0_pred,tf_dict)
         Yi = rhoi/np.sum(rhoi,axis=1)
         return Yi
 
@@ -235,29 +196,17 @@ class PhysicsInformedNN:
 if __name__ == "__main__":
 
     #ctypesの引数設定
-    fn1 = np.ctypeslib.load_library("mts_make_omega_single.so",".")
-    fn1.imtss_omega_single_.argtypes = [
+    fn1 = np.ctypeslib.load_library("mts_make_omega.so",".")
+    fn1.imtss_omega_.argtypes = [
         c.POINTER(c.c_int),
         np.ctypeslib.ndpointer(dtype=np.float64),
         np.ctypeslib.ndpointer(dtype=np.float64),
         np.ctypeslib.ndpointer(dtype=np.float64),
         np.ctypeslib.ndpointer(dtype=np.float64),
         np.ctypeslib.ndpointer(dtype=np.float64),
-        c.POINTER(c.c_double)
+        np.ctypeslib.ndpointer(dtype=np.float64),
     ]
-    fn1.imtss_omega_single_.restype = c.c_void_p
-
-    fn2 = np.ctypeslib.load_library("mts_make_omega_para.so",".")
-    fn2.imtss_omega_para_.argtypes = [
-        c.POINTER(c.c_int),
-        np.ctypeslib.ndpointer(dtype=np.float64),
-        np.ctypeslib.ndpointer(dtype=np.float64),
-        np.ctypeslib.ndpointer(dtype=np.float64),
-        np.ctypeslib.ndpointer(dtype=np.float64),
-        np.ctypeslib.ndpointer(dtype=np.float64),
-        c.POINTER(c.c_double)
-    ]
-    fn2.imtss_omega_para_.restype = c.c_void_p
+    fn1.imtss_omega_.restype = c.c_void_p
 
 
     #パスの指定
@@ -312,7 +261,7 @@ if __name__ == "__main__":
 
 
     #N_u = 1
-    N = 300
+    N = 30
     N_train = 0
     t_f = [0,3e-5]
     layers = [20] * 8
@@ -332,6 +281,10 @@ if __name__ == "__main__":
     elapsed = time.time() - start_time
     print('Training time: %.4f' % (elapsed))
 
+    t = np.array([3e-5])
+    T = np.array([1200])
+    p = np.array([1.01325e5])
+    Yi = np.delete(Yi,-1,axis=1)
     Yi_pred = model.predict(t, T, p, Yi)
 
     error_u = np.linalg.norm(train_y-Yi_pred,2)/np.linalg.norm(train_y,2)

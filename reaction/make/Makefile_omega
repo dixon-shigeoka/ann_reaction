@@ -4,10 +4,10 @@
 
 ISTDIR = ../
 OBJDIR = ./lib
-NAME   = mts_make_omega_single.so
+NAME   = mts_make_omega.so
 TARGET = $(ISTDIR)/$(NAME)
-FC = ifort
-#FC = gfortran
+#FC = ifort
+FC = gfortran
 DEBUG =
 DEBUGOMP =
 FFLAGS =
@@ -34,6 +34,7 @@ endif
 
 ifeq ($(FC),gfortran) #compile options for gfortran
   FFLAGS = -O2 -ffree-form -fimplicit-none -J $(OBJDIR)
+#  FFLAGS = -O0 -ffree-form -fimplicit-none -J $(OBJDIR)
   FFLAGS+= -fopenmp                                      # parallel calculation
   FFLAGS+= -fbacktrace -g                                # for debug
   FFLAGS+= -Wall -fbounds-check -Wuninitialized                               \
@@ -58,7 +59,7 @@ ifeq ($(DEBUGOMP),on) #make all DEBUGOMP=on (command line)
 endif
 
 FOBJ+= mod_parameter.o         mod_globals.o                    \
-       mod_function.o          imtss_omega_single.o        \
+       mod_function.o          imtss_omega.o        \
 
 .SUFFIXES : .o .f90
 
