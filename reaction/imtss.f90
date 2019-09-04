@@ -290,9 +290,9 @@ subroutine imtss(dtmp,dprs,aYi,delt)
   aflgm7 = 1.d0 * aflag
   aflgm8 = 1.d0 * aflag
 
-  write(6,*) "before Loop totaldens", totaldens
-  write(6,*) "before Loop tmp", atmp
-  write(6,*) "before Loop adns", adns(:)
+  !write(6,*) "before Loop totaldens", totaldens
+  !write(6,*) "before Loop tmp", atmp
+  !write(6,*) "before Loop adns", adns(:)
 
   do m = 1, 1000000    !MTS loop
 
@@ -1086,8 +1086,6 @@ subroutine imtss(dtmp,dprs,aYi,delt)
 
     end do
 
-    write(6,*) "after mts", m, atmp
-
     aYi(:) = adns(:)/totaldens
     dtmp = atmp
     atmw(:) = aYi(:)*dmlr(:)      ! amlf(:)/atw
@@ -1097,6 +1095,9 @@ subroutine imtss(dtmp,dprs,aYi,delt)
     dprs   = totaldens*druo*atmp
     !totaldens = dprs*atmpr/druo
     !totaldens = sum(adns(:))
+
+    write(6,*) "after mts", m, atmp, dprs
+
 
   deallocate(adns,afm,ab)
 

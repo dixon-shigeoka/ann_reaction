@@ -1,5 +1,6 @@
 import numpy as np
 import time
+import ctypes as c
 import os
 from keras.models import Sequential, model_from_json
 from keras.layers import Dense,Activation
@@ -16,6 +17,28 @@ abspath_eval = abspath + '/output/eval.csv'
 abspath_answer = abspath + '/output/answer.csv'
 abspath_randt = abspath + '/output/randt.csv'
 print(abspath_x)
+
+
+#ctypesの引数設定
+fn1 = np.ctypeslib.load_library("make_constant.so",".")
+fn1.make_constant_.argtypes = [
+    c.POINTER(c.c_double),
+    c.POINTER(c.c_double),
+    np.ctypeslib.ndpointer(dtype=np.float64),
+    c.POINTER(c.c_double),
+    c.POINTER(c.c_double),
+]
+fn1.make_constant_.restype = c.c_void_p
+
+fn2 = np.ctypeslib.load_library("make_properties.so",".")
+fn2.make_properties_.argtypes = [
+    c.POINTER(c.c_double),
+    c.POINTER(c.c_double),
+    np.ctypeslib.ndpointer(dtype=np.float64),
+    c.POINTER(c.c_double),
+    c.POINTER(c.c_double),
+]
+fn2.make_properties_.restype = c.c_void_p
 
 
 # MTS training dataの読み込み

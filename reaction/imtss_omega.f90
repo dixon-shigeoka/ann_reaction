@@ -34,7 +34,7 @@ subroutine imtss_omega(n,delt,dtmp,dprs,aYi,omegai,totaldens)
   real(8),parameter :: alim = 1.d0 - 1.d-13
   integer, intent(in) :: n
   real(8), intent(in)  :: delt(n), dtmp(n), dprs(n), aYi(9,n)
-  real(8), intent(out) :: omegai(n,8), totaldens(n,1)
+  real(8), intent(out) :: omegai(8,n), totaldens(n,1)
   !real(8), intent(in)  :: dtmp, dprs, aYi(9)
   !real(8), intent(out) :: omegai(8), totaldens
   real(8), allocatable :: adns(:), afm(:), ab(:), dml(:), dmlr(:), dmlru(:),       &
@@ -298,6 +298,9 @@ subroutine imtss_omega(n,delt,dtmp,dprs,aYi,omegai,totaldens)
 
 
   do ii = 1, n
+
+    if(mod(ii,1000) == 0) write(6,*) ii
+
     atime   = 0.d0
     atmp = dtmp(ii)
     atmpr = 1/dtmp(ii)
@@ -1766,14 +1769,14 @@ subroutine imtss_omega(n,delt,dtmp,dprs,aYi,omegai,totaldens)
   &                      -ar14 -ar15 -ar16 -ar17 +ar18 +ar20)
       awh2o2 = dml(8) * (-ar05 -ar06 +ar08 -ar18 -ar19 -ar20)
 
-    omegai(ii,1) = awh2
-    omegai(ii,2) = awo2
-    omegai(ii,3) = awh
-    omegai(ii,4) = awo
-    omegai(ii,5) = awoh
-    omegai(ii,6) = awh2o
-    omegai(ii,7) = awho2
-    omegai(ii,8) = awh2o2
+    omegai(1,ii) = awh2
+    omegai(2,ii) = awo2
+    omegai(3,ii) = awh
+    omegai(4,ii) = awo
+    omegai(5,ii) = awoh
+    omegai(6,ii) = awh2o
+    omegai(7,ii) = awho2
+    omegai(8,ii) = awh2o2
 
   end do
   !$OMP END DO

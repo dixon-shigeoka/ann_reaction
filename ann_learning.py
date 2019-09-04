@@ -108,6 +108,13 @@ def loss_logadd(y_true,y_pred):
     second_log = K.log(K.abs(y_true))
     return  K.mean(K.square(K.abs(y_pred - y_true) + first_log - second_log),axis=-1)
 
+def loss_logadd2(y_true,y_pred):
+    first_log = K.log(K.abs(y_pred))
+    second_log = K.log(K.abs(y_true))
+    #return  K.mean(K.square(K.abs(y_pred - y_true) + K.log(y_pred/y_true)),axis=-1)
+    #return  K.mean(K.square(K.abs(y_pred - y_true) + tf.div(y_pred,y_true)),axis=-1)
+    return  K.mean(K.square(K.abs(y_pred - y_true) + tf.div(first_log,second_log)),axis=-1)
+
 def mix_mse_mape(y_true,y_pred):
     first_log  = K.abs(y_pred)
     second_log = K.abs(y_true)
@@ -153,8 +160,8 @@ for i in range(state_num) :
     model.add(Dropout(0.2))
     model.add(Dense(output_num))
     #model.add(Activation('sigmoid'))
-    model.compile(optimizer='adam',loss='mean_squared_error',metrics=['mae'])
-    #model.compile(optimizer='adam',loss='poisson',metrics=['acc'])
+    #model.compile(optimizer='adam',loss='mean_squared_error',metrics=['mae'])
+    model.compile(optimizer='adam',loss=loss_logadd2,metrics=['mae'])
     #model.compile(optimizer='adam',loss=mix_mse_mape,metrics=['acc'])
     model.summary()
 

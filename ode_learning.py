@@ -18,7 +18,6 @@ class PhysicsInformedNN:
     def __init__(self, N, t_f, T0_f, p0_f, Yi0_f, layers):
 
         self.N = N
-        self.layers = layers
 
         self.t0 = np.zeros([N,1])
 
@@ -41,9 +40,9 @@ class PhysicsInformedNN:
         #self.X = np.concatenate([self.t_f,self.T0_f,self.p0_f],axis=1)
         #self.X 1= np.hstack([self.t_f,self.T0_f,self.p0_f])
 
-        X = np.concatenate([self.t_f,self.T0_f,self.p0_f],axis=1)
-        self.lb = X.min(axis=0)
-        self.ub = X.min(axis=0)
+        #X = np.concatenate([self.t_f,self.T0_f,self.p0_f],axis=1)
+        #self.lb = X.min(axis=0)
+        #self.ub = X.min(axis=0)
 
 
         self.omegai_f, self.totaldens = self.make_omegai(self.N, self.t_f, self.T0_f, self.p0_f, self.Yi0_f)
@@ -53,7 +52,9 @@ class PhysicsInformedNN:
         self.Yi0_f = np.delete(self.Yi0_f,-1,axis=1)
         self.rhoi0_f = np.delete(self.rhoi0_f,-1,axis=1)
 
-        print(self.Yi0_f.shape, self.rhoi0_f.shape, self.p0_f.shape, self.T0_f.shape)
+        #self.t0 = self.t0*1e5
+        #self.T0_f = self.T0_f*1e-3
+        #self.p0_f = self.p0_f*1e-5
 
         # Initialize NNs
         self.layers = layers
@@ -63,14 +64,14 @@ class PhysicsInformedNN:
         self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True,
                                                      log_device_placement=True))
 
-        self.t0_tf = tf.placeholder(tf.float64, shape=[None, self.t0.shape[1]])
-        self.T0_tf = tf.placeholder(tf.float64, shape=[None, self.T0_f.shape[1]])
-        self.p0_tf = tf.placeholder(tf.float64, shape=[None, self.p0_f.shape[1]])
-        self.Yi0_tf = tf.placeholder(tf.float64, shape=[None, self.Yi0_f.shape[1]])
-        self.rhoi0_tf = tf.placeholder(tf.float64, shape=[None, self.rhoi0_f.shape[1]])
+        self.t0_tf = tf.placeholder(tf.float32, shape=[None, self.t0.shape[1]])
+        self.T0_tf = tf.placeholder(tf.float32, shape=[None, self.T0_f.shape[1]])
+        self.p0_tf = tf.placeholder(tf.float32, shape=[None, self.p0_f.shape[1]])
+        self.Yi0_tf = tf.placeholder(tf.float32, shape=[None, self.Yi0_f.shape[1]])
+        self.rhoi0_tf = tf.placeholder(tf.float32, shape=[None, self.rhoi0_f.shape[1]])
+        self.omegai_f_tf = tf.placeholder(tf.float32, shape=[None, self.omegai_f.shape[1]])
 
-        self.t_f_tf = tf.placeholder(tf.float64, shape=[None, self.t_f.shape[1]])
-        self.omegai_f_tf = tf.placeholder(tf.float64, shape=[None, self.omegai_f.shape[1]])
+        self.t_f_tf = tf.placeholder(tf.float32, shape=[None, self.t_f.shape[1]])
 
         self.rhoi0_pred = self.net_u(self.t0_tf, self.T0_tf, self.p0_tf, self.Yi0_tf)
         self.f_pred = self.net_f(self.t_f_tf, self.T0_tf, self.p0_tf, self.Yi0_tf, self.omegai_f_tf)
@@ -87,7 +88,7 @@ class PhysicsInformedNN:
                                                                            'maxls': 50,
                                                                            'ftol' : 1.0 * np.finfo(float).eps})
 
-        self.optimizer_Adam = tf.train.AdamOptimizer()
+        self.optimizer_Adam = tf.train.AdamOptimizer(learning_rate=0.00001)
         self.train_op_Adam = self.optimizer_Adam.minimize(self.loss)
 
         init = tf.global_variables_initializer()
@@ -100,7 +101,7 @@ class PhysicsInformedNN:
         num_layers = len(layers)
         for l in range(0,num_layers-1):
             W = self.xavier_init(size=[layers[l], layers[l+1]])
-            b = tf.Variable(tf.zeros([1,layers[l+1]], dtype=tf.float64), dtype=tf.float64)
+            b = tf.Variable(tf.zeros([1,layers[l+1]], dtype=tf.float32), dtype=tf.float32)
             weights.append(W)
             biases.append(b)
         return weights, biases
@@ -109,7 +110,7 @@ class PhysicsInformedNN:
         in_dim = size[0]
         out_dim = size[1]
         xavier_stddev = np.sqrt(2/(in_dim + out_dim))
-        return tf.Variable(tf.truncated_normal([in_dim, out_dim], stddev=xavier_stddev), dtype=tf.float64)
+        return tf.Variable(tf.truncated_normal([in_dim, out_dim], stddev=xavier_stddev), dtype=tf.float32)
 
     def make_omegai(self, N, t_f, T0_f, p0_f, Yi0_f) :
         omegai = np.zeros([self.N,self.Yi0_f.shape[1]-1])
@@ -150,7 +151,6 @@ class PhysicsInformedNN:
 
     def net_f(self, t, T, p, Yi, omegai):
         rhoi = self.neural_net(tf.concat([t,T,p,Yi],axis=1), self.weights, self.biases)
-        #rhoi = self.net_u(t, T, p, Yi)
         rhoi_t = tf.gradients(rhoi, t)[0]
         f = rhoi_t - omegai
         return f
@@ -263,14 +263,14 @@ if __name__ == "__main__":
     #N_u = 1
     N = 30
     N_train = 0
-    t_f = [0,3e-5]
+    t_f = [1e-6,3e-5]
     layers = [20] * 8
     layers = [11, *layers, 8]
 
     #T  = train_x[0,0:1 ]
     #p  = train_x[0,1:2 ]
     T  = [1190, 1210]
-    p  = [1.01e5, 1.016e5 ]
+    p  = [9.5e4, 1.05e5 ]
     Yi = train_x[0,2:11]
     Yi = Yi.reshape(1,9)
     Exact = np.real(train_y)

@@ -4,8 +4,7 @@ FROM tensorflow/tensorflow:latest-gpu-py3
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
     gfortran \
-    libgfortran3 \
-    libifport.so.5
+    libgfortran3
 
 #RUN mkdir -p /usr/src/app
 #WORKDIR /usr/src/app
@@ -16,7 +15,9 @@ RUN pip install --upgrade pip
 RUN pip install \
     scikit-learn \
     pandas \
-    matplotlib
+    matplotlib \
+    ipython \
+    keras
 
 #COPY . /usr/src/app
 
