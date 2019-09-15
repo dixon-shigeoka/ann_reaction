@@ -57,13 +57,13 @@ input_num     = 10
 output_num    = 8
 mts_loop      = 1  #base timeからのmts loopの回数
 data_num      = 1  #train_x中で初期値とする状態量の番号
-start         = 0  #検証を開始するstep数
+start         = 200  #検証を開始するstep数
 ########
 
 #熱的状態量の算出
-dtmp = train_x[0,0]
-dprs = train_x[0,1]
-aYi = train_x[0,2:10]
+dtmp = train_x[start,0]
+dprs = train_x[start,1]
+aYi = train_x[start,2:10]
 totaldens = 0
 aeng = 0
 
@@ -71,10 +71,11 @@ dtmp = c.c_double(dtmp)     #ctypes形式でラップ
 dprs = c.c_double(dprs)
 totaldens = c.c_double(totaldens)
 aeng = c.c_double(aeng)
+
 fn1.make_constant_(c.byref(dtmp),c.byref(dprs),aYi,c.byref(totaldens),c.byref(aeng))
+
 totaldens = totaldens.value
 aeng = aeng.value
-
 
 #train_x = train_x[0:200,:]
 #train_y = train_y[0:200,:]
@@ -121,17 +122,17 @@ model.load_weights(abspath_weight)
 #evaluation
 
 eval_data = np.zeros([1,input_num])
+eval_zeros = np.zeros([1,1])
 train = train_x[(start+data_length[data_num-1]),:]
 
 train_int = train.reshape(1,input_num)
 eval_moment = model.predict(train_int)
+print(eval_moment)
 
 data_range = data_length[data_num] - data_length[data_num-1] - 1
 eval_range = data_range/mts_loop - start - 1 #startから最終ステップまでの長さ
 eval_range = int(eval_range)
 
-
-#ここまで直し9/5,モデル作成からスタート
 
 for ii in range(eval_range) :
 
@@ -144,15 +145,26 @@ for ii in range(eval_range) :
     dprs = c.c_double(dprs)
     totaldens = c.c_double(totaldens)
     aeng = c.c_double(aeng)
+    #print('aYi',aYi, np.sum(aYi))
+
     fn2.make_properties_(c.byref(dtmp),c.byref(dprs),aYi,c.byref(totaldens),c.byref(aeng))
+
     dtmp = dtmp.value
     dprs = dprs.value
     totaldens = totaldens.value
     aeng = aeng.value
+    #print('temp',dtmp, 'dprs',dprs)
 
-    eval_moment = np.concatenate(dtmp,dprs,eval_momoment,axis=0)
-    eval_next = eval_moment.reshape(1,output_num)
-    eval_data = np.concatenate([eval_data,eval_moment],axis=0)
+    eval_append = np.append(eval_zeros,dtmp)
+    eval_append = np.append(eval_append,dprs)
+    eval_moment = np.append(eval_append,aYi)
+    eval_moment = np.delete(eval_moment,0,0)
+    print(eval_moment)
+    eval_moment = np.log(eval_moment)
+    print('log',eval_moment)
+    eval_moment = (eval_moment - mean_x) / std_x
+    eval_next = eval_moment.reshape((1,input_num))
+    eval_data = np.concatenate([eval_data,eval_next],axis=0)
     eval_moment = model.predict(eval_next)
 
 t2 = time.time()
@@ -178,8 +190,8 @@ train_x = np.exp(train_x)
 
 #train = train_x[(data_length[data_num]),:]
 #print(train)
-print(train_x[0,:])
-print(train_y[0,:])
+print(train_x[start,:])
+print(train_y[start,:])
 #print(eval_data)
 
 #train_data = train_x[start*mts_loop::mts_loop,]

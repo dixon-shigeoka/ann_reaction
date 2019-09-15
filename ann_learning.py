@@ -44,14 +44,12 @@ train_x = np.load(abspath_x)
 train_y = np.load(abspath_y)
 state_x = np.array(["temp","pres","H2","O2","H","O","OH","H2O","HO2","H2O2","N2","delt"])
 #train_y = train_y[:,np.array([0,5])] #H mass fraction
-#train_x = np.delete(train_x,10,1) # delete N2 mass fraction
-#train_x = np.delete(train_x,10,1) # delete delt
-#train_y = np.delete(train_y,10,1) # delete N2 mass fraction
-#train_y = np.delete(train_y,0,1) # delete Temperature
-#train_y = np.delete(train_y,0,1) # delete Pressure
+train_x = np.delete(train_x,10,1) # delete N2 mass fraction
+train_x = np.delete(train_x,10,1) # delete delt
+train_y = np.delete(train_y,10,1) # delete N2 mass fraction
+train_y = np.delete(train_y,0,1) # delete Temperature
+train_y = np.delete(train_y,0,1) # delete Pressure
 print(train_x.shape,train_y.shape)
-print(train_x[0,0],train_y[0,0])
-print(train_x[1,0],train_y[1,0])
 
 
 #for validation, Input: t,  Output:Yi
@@ -78,18 +76,18 @@ print(train_x[1,0],train_y[1,0])
 #train_x = np.concatenate([train_x,train_x_delt],axis=1)
 #train_y = np.concatenate([train_y_thermo,train_y_Yi],axis=1)
 train_x = np.log(train_x)
-train_y = np.log(train_y)
+#train_y = np.log(train_y)
 
-train_x = train_x[0:200,:]
-train_y = train_y[0:200,:]
+#train_x = train_x[0:200,:]
+#train_y = train_y[0:200,:]
 
 #standardization
 mean_x = np.mean(train_x,axis=0)
-mean_y = np.mean(train_y,axis=0)
+#mean_y = np.mean(train_y,axis=0)
 std_x = np.std(train_x,axis=0)
-std_y = np.std(train_y,axis=0)
+#std_y = np.std(train_y,axis=0)
 train_x = (train_x - mean_x) / std_x
-train_y = (train_y - mean_y) / std_y
+#train_y = (train_y - mean_y) / std_y
 
 #min-max normalize
 #min_x = np.min(train_x,axis=0)
@@ -113,7 +111,7 @@ def loss_logadd2(y_true,y_pred):
     second_log = K.log(K.abs(y_true))
     #return  K.mean(K.square(K.abs(y_pred - y_true) + K.log(y_pred/y_true)),axis=-1)
     #return  K.mean(K.square(K.abs(y_pred - y_true) + tf.div(y_pred,y_true)),axis=-1)
-    return  K.mean(K.square(K.abs(y_pred - y_true) + tf.div(first_log,second_log)),axis=-1)
+    return  K.mean(K.square(K.abs(y_pred - y_true) + first_log - second_log),axis=-1)
 
 def mix_mse_mape(y_true,y_pred):
     first_log  = K.abs(y_pred)
@@ -128,40 +126,44 @@ t1 = time.time()
 #Hold-Out method for validation
 #モデル作成宣言
 
-input_num = 1
-output_num = 1
+input_num = 10
+output_num = 8
 state_num = int(input_num/output_num)
-select = np.array([5])
+#select = np.array([5])
 
-train_x = train_x[:,select] #H mass fraction
-state_x = state_x[select]
+#train_x = train_x[:,select] #H mass fraction
+#state_x = state_x[select]
 
 
 #各状態量に対しての個別のモデルを作成するためのループ
 for i in range(state_num) :
     #(train_x,test_x,train_y,test_y) = train_test_split(X,Y,test_size=0.1,shuffle=True,random_state=seed)
-    if (state_num == 1) :
-        train_y_state = train_y[:,select]
+    if (output_num == 1) :
+        if (state_num == 1) :
+            train_y_state = train_y[:,select]
+        else :
+            train_y_state = train_y[:,select[i]] #H mass fraction
     else :
-        train_y_state = train_y[:,select[i]] #H mass fraction
+        train_y_state = train_y
 
+    print(train_y_state)
 
     # define X-fold cross validation
     model = Sequential()
 
     #パラメータ設定
-    model.add(Dense(24,input_dim=input_num))
+    model.add(Dense(30,input_dim=input_num))
     #model.add(BatchNormalization())
-    model.add(Activation('sigmoid'))
-    model.add(Dropout(0.2))
-    model.add(Dense(24))
+    model.add(Activation('relu'))
+    #model.add(Dropout(0.1))
+    #model.add(Dense(30))
     #model.add(BatchNormalization())
-    model.add(Activation('sigmoid'))
-    model.add(Dropout(0.2))
+    #model.add(Activation('relu'))
+    #model.add(Dropout(0.1))
     model.add(Dense(output_num))
-    #model.add(Activation('sigmoid'))
-    #model.compile(optimizer='adam',loss='mean_squared_error',metrics=['mae'])
-    model.compile(optimizer='adam',loss=loss_logadd2,metrics=['mae'])
+    #model.add(Activation('softmax'))
+    model.compile(optimizer='adam',loss='mean_squared_error',metrics=['mae'])
+    #model.compile(optimizer='adam',loss=loss_logadd2,metrics=['mae'])
     #model.compile(optimizer='adam',loss=mix_mse_mape,metrics=['acc'])
     model.summary()
 
@@ -183,8 +185,8 @@ for i in range(state_num) :
 
 
     #学習実行
-    epochs = 10000
-    batch_size = 8
+    epochs = 150000
+    batch_size = 16
     verbose = 2
     #history = model.fit(train_x,train_y_state,batch_size,epochs,verbose,
     #                    callbacks=cbks,validation_data=(test_x,test_y))
@@ -262,7 +264,8 @@ for i in range(state_num) :
 #    batch_size = 64
 #    verbose = 1
 #    history = model.fit(X[train],Y[train],batch_size,epochs,verbose,
-#                        callbacks=cbks,validation_data=(X[test],Y[test]))
+#
+#callbacks=cbks,validation_data=(X[test],Y[test])
 #
 #
 #    #評価

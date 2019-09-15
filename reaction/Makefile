@@ -4,7 +4,7 @@
 
 ISTDIR = ../
 OBJDIR = ./lib
-NAME   = make_constant.so
+NAME   = make_properties.so
 TARGET = $(ISTDIR)/$(NAME)
 #FC = ifort
 FC = gfortran
@@ -58,7 +58,7 @@ ifeq ($(DEBUGOMP),on) #make all DEBUGOMP=on (command line)
 endif
 
 FOBJ+= mod_parameter.o         mod_globals.o                    \
-       mod_function.o          make_constant.o        \
+       mod_function.o          make_properties.o        \
 
 .SUFFIXES : .o .f90
 

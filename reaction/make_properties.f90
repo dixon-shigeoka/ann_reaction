@@ -114,11 +114,15 @@ subroutine make_properties(dtmp,dprs,aYi,totaldens,aeng)
 !---------------------------------------------------------------------
 ! update temperature
 
-      afm(1:lsp) = adns(1:lsp)*dmlru(1:lsp)
+  adns(1:lsp-1) = aYi(1:lsp-1) * totaldens
+  adns(lsp) = 0.d0
+  arho = sum(adns(1:8))
 
-      afmt = sum(afm(:))
+  afm(1:lsp) = adns(1:lsp)*dmlru(1:lsp)
 
-      at = atmp
+  afmt = sum(afm(:))
+
+  at = dtmp
 
 ! --------------------
 ! newton-rapson method
@@ -152,12 +156,14 @@ subroutine make_properties(dtmp,dprs,aYi,totaldens,aeng)
       end do
 
       dtmp = at
+      ah = 0.d0
+
       do i = 1, lsp
         call calc_phti(i,itm,dtmp,phti,dmlr,dplh)
         ahti = phti
         ah   = ah  + adns(i)*ahti/arho
       end do
-      arho = sum(adns(1:8))
+
       dprs = aeng + ah*arho
 
 end subroutine make_properties
