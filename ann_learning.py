@@ -185,7 +185,7 @@ for i in range(state_num) :
 
 
     #学習実行
-    epochs = 150000
+    epochs = 50000
     batch_size = 16
     verbose = 2
     #history = model.fit(train_x,train_y_state,batch_size,epochs,verbose,

@@ -57,7 +57,7 @@ input_num     = 10
 output_num    = 8
 mts_loop      = 1  #base timeからのmts loopの回数
 data_num      = 1  #train_x中で初期値とする状態量の番号
-start         = 200  #検証を開始するstep数
+start         = 0  #検証を開始するstep数
 ########
 
 #熱的状態量の算出
@@ -127,7 +127,6 @@ train = train_x[(start+data_length[data_num-1]),:]
 
 train_int = train.reshape(1,input_num)
 eval_moment = model.predict(train_int)
-print(eval_moment)
 
 data_range = data_length[data_num] - data_length[data_num-1] - 1
 eval_range = data_range/mts_loop - start - 1 #startから最終ステップまでの長さ
@@ -159,12 +158,13 @@ for ii in range(eval_range) :
     eval_append = np.append(eval_append,dprs)
     eval_moment = np.append(eval_append,aYi)
     eval_moment = np.delete(eval_moment,0,0)
-    print(eval_moment)
-    eval_moment = np.log(eval_moment)
-    print('log',eval_moment)
-    eval_moment = (eval_moment - mean_x) / std_x
     eval_next = eval_moment.reshape((1,input_num))
     eval_data = np.concatenate([eval_data,eval_next],axis=0)
+    print(eval_next)
+    eval_next = np.log(eval_next)
+    eval_next = (eval_next - mean_x) / std_x
+    #eval_next = eval_moment.reshape((1,input_num))
+    #eval_data = np.concatenate([eval_data,eval_next],axis=0)
     eval_moment = model.predict(eval_next)
 
 t2 = time.time()
