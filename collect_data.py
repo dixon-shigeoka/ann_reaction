@@ -9,6 +9,9 @@ abspath_x = abspath + '/learning_data/train_x.npy'
 abspath_y = abspath + '/learning_data/train_y.npy'
 abspath_length = abspath + '/learning_data/data_length.npy'
 
+seed = 7
+np.random.seed(seed)
+
 #ctypesの引数設定
 fn = np.ctypeslib.load_library("mtsdriver.so",".")
 fn.imtss_.argtypes = [
@@ -39,12 +42,12 @@ data_length = np.zeros([1,1])
 dtmp = 0
 counter = 0     # データ数カウンター
 
-for i in range(1):  #質量分率，温度，密度を変化させるループ(base time)
+for i in range(10):  #質量分率，温度，密度を変化させるループ(base time)
 
     print(dtmp)
     data_length = np.append(data_length,counter)
     t1 = time.time()
-    dtmp = 1200 + float(tcounter*10)
+    dtmp = 1150 + float(tcounter*10)
     dprs = 1.01325e5
     aMi = np.array([2.016,32.000,1.008,16.000,17.008,18.016,33.008,34.016,28.016])
     aMolarRatio = np.array([2,1,0,0,0,0,0,0,0])

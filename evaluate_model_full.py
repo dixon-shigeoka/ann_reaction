@@ -56,8 +56,8 @@ state_x = np.array(["temp","pres","H2","O2","H","O","OH","H2O","HO2","H2O2","N2"
 input_num     = 10
 output_num    = 8
 mts_loop      = 1  #base timeからのmts loopの回数
-data_num      = 1  #train_x中で初期値とする状態量の番号
-start         = 0  #検証を開始するstep数
+data_num      = 6  #train_x中で初期値とする状態量の番号
+start         = 200  #検証を開始するstep数
 ########
 
 #熱的状態量の算出
@@ -85,6 +85,8 @@ train_y = np.delete(train_y,10,1)
 train_y = np.delete(train_y,0,1)
 train_y = np.delete(train_y,0,1)
 
+print(data_length)
+print(train_x[(start+data_length[data_num-1]),:])
 
 #標準化または対数正規化
 #Yiのみ対数変換
@@ -160,7 +162,6 @@ for ii in range(eval_range) :
     eval_moment = np.delete(eval_moment,0,0)
     eval_next = eval_moment.reshape((1,input_num))
     eval_data = np.concatenate([eval_data,eval_next],axis=0)
-    print(eval_next)
     eval_next = np.log(eval_next)
     eval_next = (eval_next - mean_x) / std_x
     #eval_next = eval_moment.reshape((1,input_num))

@@ -18,16 +18,9 @@ RUN pip install \
     pandas \
     matplotlib \
     ipython \
-    keras
+    keras \
+    scipy \
+    tqdm
 
-RUN cat << EOF > FILE ~/.keras/keras.jason
-{
-    "image_data_format": "channels_last",
-    "epsilon": 1e-07,
-    "floatx": "float64",
-    "backend": "tensorflow"
-}
-EOF
-
-#COPY . /usr/src/app
-
+RUN mkdir /root/.keras
+COPY Docker-keras.json /root/.keras/keras.json

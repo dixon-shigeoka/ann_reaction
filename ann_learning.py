@@ -1,6 +1,7 @@
 import numpy as np
 import time
 import os
+import scipy.io
 from keras.models import Sequential
 from keras.layers import Dense,BatchNormalization,Activation,Dropout
 from keras import backend as K
@@ -109,7 +110,7 @@ def loss_logadd(y_true,y_pred):
 def loss_logadd2(y_true,y_pred):
     first_log = K.log(K.abs(y_pred))
     second_log = K.log(K.abs(y_true))
-    #return  K.mean(K.square(K.abs(y_pred - y_true) + K.log(y_pred/y_true)),axis=-1)
+    #return  K.mean(K.square(K.abs(y_pred - y_true) + K.log(y_pred/y_true)),axis=0)
     #return  K.mean(K.square(K.abs(y_pred - y_true) + tf.div(y_pred,y_true)),axis=-1)
     return  K.mean(K.square(K.abs(y_pred - y_true) + first_log - second_log),axis=-1)
 
@@ -161,9 +162,9 @@ for i in range(state_num) :
     #model.add(Activation('relu'))
     #model.add(Dropout(0.1))
     model.add(Dense(output_num))
-    #model.add(Activation('softmax'))
-    model.compile(optimizer='adam',loss='mean_squared_error',metrics=['mae'])
-    #model.compile(optimizer='adam',loss=loss_logadd2,metrics=['mae'])
+    model.add(Activation('sigmoid'))
+    #model.compile(optimizer='adam',loss='mean_squared_error',metrics=['mae'])
+    model.compile(optimizer='adam',loss=loss_logadd2,metrics=['mae'])
     #model.compile(optimizer='adam',loss=mix_mse_mape,metrics=['acc'])
     model.summary()
 
@@ -186,7 +187,7 @@ for i in range(state_num) :
 
     #学習実行
     epochs = 50000
-    batch_size = 16
+    batch_size = 64
     verbose = 2
     #history = model.fit(train_x,train_y_state,batch_size,epochs,verbose,
     #                    callbacks=cbks,validation_data=(test_x,test_y))

@@ -86,7 +86,8 @@ class PhysicsInformedNN:
                                                                            'maxfun': 50000,
                                                                            'maxcor': 50,
                                                                            'maxls': 50,
-                                                                           'ftol' : 1.0 * np.finfo(float).eps})
+                                                                           'ftol' : 1.0 * np.finfo(float).eps,
+                                                                           'eps'  : 1e-5})
 
         self.optimizer_Adam = tf.train.AdamOptimizer(learning_rate=0.00001)
         self.train_op_Adam = self.optimizer_Adam.minimize(self.loss)
