@@ -56,14 +56,22 @@ state_x = np.array(["temp","pres","H2","O2","H","O","OH","H2O","HO2","H2O2","N2"
 input_num     = 10
 output_num    = 8
 mts_loop      = 1  #base timeからのmts loopの回数
-data_num      = 6  #train_x中で初期値とする状態量の番号
-start         = 200  #検証を開始するstep数
+data_num      = 1  #train_x中で初期値とする状態量の番号
+start         = 0  #検証を開始するstep数
 ########
 
 #熱的状態量の算出
-dtmp = train_x[start,0]
-dprs = train_x[start,1]
+train_int_zeros = np.zeros([1,1])
+#dtmp = train_x[start,0]
+#dprs = train_x[start,1]
+dtmp = 1763
+dprs = 3343232
 aYi = train_x[start,2:10]
+train_int_append = np.append(train_int_zeros,dtmp)
+train_int_append = np.append(train_int_append,dprs)
+train_int_append = np.append(train_int_append,aYi)
+train_int_moment = np.delete(train_int_append,0,0)
+train_int_moment = train_int_moment.reshape((1,10))
 totaldens = 0
 aeng = 0
 
@@ -125,7 +133,8 @@ model.load_weights(abspath_weight)
 
 eval_data = np.zeros([1,input_num])
 eval_zeros = np.zeros([1,1])
-train = train_x[(start+data_length[data_num-1]),:]
+#train = train_x[(start+data_length[data_num-1]),:]
+train = train_int*std_x + mean_x
 
 train_int = train.reshape(1,input_num)
 eval_moment = model.predict(train_int)
@@ -191,8 +200,8 @@ train_x = np.exp(train_x)
 
 #train = train_x[(data_length[data_num]),:]
 #print(train)
-print(train_x[start,:])
-print(train_y[start,:])
+#print(train_x[start,:])
+#print(train_y[start,:])
 #print(eval_data)
 
 #train_data = train_x[start*mts_loop::mts_loop,]

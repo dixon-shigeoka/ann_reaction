@@ -186,8 +186,8 @@ for i in range(state_num) :
 
 
     #学習実行
-    epochs = 50000
-    batch_size = 64
+    epochs = 20000
+    batch_size = 1024
     verbose = 2
     #history = model.fit(train_x,train_y_state,batch_size,epochs,verbose,
     #                    callbacks=cbks,validation_data=(test_x,test_y))

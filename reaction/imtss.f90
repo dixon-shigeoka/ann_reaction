@@ -1096,7 +1096,7 @@ subroutine imtss(dtmp,dprs,aYi,delt)
     !totaldens = dprs*atmpr/druo
     !totaldens = sum(adns(:))
 
-    write(6,*) "after mts", m, atmp, dprs
+!    write(6,*) "after mts", m, atmp, dprs
 
 
   deallocate(adns,afm,ab)

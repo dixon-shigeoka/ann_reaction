@@ -1,4 +1,4 @@
-subroutine imtss(dtmp,dprs,aYi,delt)
+subroutine semiimp(dtmp,dprs,aYi,delt)
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 !
 !
@@ -34,45 +34,34 @@ subroutine imtss(dtmp,dprs,aYi,delt)
   real(8),parameter :: alim = 1.d0 - 1.d-13
   real(8), intent(inout) :: dtmp, dprs, aYi(9)
   real(8), intent(in) :: delt
-  real(8), allocatable :: adns(:), afm(:), ab(:), dml(:), dmlr(:), dmlru(:), dplh(:,:,:), atmw(:)
+  real(8), allocatable :: adns(:), afm(:), ab(:), dml(:), dmlr(:), dmlru(:), dplh(:,:,:), atmw(:), adnsr(:), arhs(:)
 
-  real(8) :: at, afmt, aeng, afdd, afd, af, addd, adt, druo, phti, ahti
-  real(8) :: atime, atmp, arho, aflag, art, atmpr, atmpl, aptr, adnsr
-  real(8) :: ar, au, av, aw, awk1, awk2, awk3, totaldens
-  real(8) :: ae01, ae02h, ae02l, ae03h, ae03l, ae04h, ae04l, ae05h, ae05l,    &
-  &          ae06a, ae06b, ae07, ae08a, ae08b, ae09, ae10, ae11, ae12a, ae12b,&
-  &          ae13, ae14, ae15, ae16, ae17, ae18, ae19, ae20, ae21, ae22, ae23,&
-  &          ae24, ae25, akf01, akf02h, akf02l, akf03h, akf03l, akf04h,       &
-  &          akf04l, akf05h, akf05l, akf06a, akf06b, akf07, akf08a, akf08b,   &
-  &          akf09, akf10, akf11, akf12a, akf12b, akf13, akf14, akf15, akf16, &
-  &          akf17, akf18, akf19, akf20, akf21, akf22, akf23, akf24, akf25,   &
-  &          ah2, ao2, ah, ao, aoh, ah2o, aho2, ah2o2, an2, am04, am05, am09, &
-  &          am21, am23, am24, am25, atrp, atrpl, atra, atrb,                 &
-  &          atrf, akf02, akf03, akf04, akf05, akf06, akf08, akf12, as1, as2, &
-  &          as3, as4, as5, as6, as7, as8, acon, ah1,  ah3, ah4, ah5, ah6,    &
-  &          ah7, ah8, apt, ag, ahh01, ahh02, ahh03, ahh04, ahh05, ahh06,     &
-  &          ahh07, ahh08, ahh09, ahh10, ahh11, ahh12, ahh13, ahh14, ahh15,   &
-  &          ahh16, ahh17, ahh18, ahh19, ahh20, ahh21, ahh22, ahh23, ahh24,   &
-  &          ahh25, akb01, akb02, akb03, akb04, akb05, akb06, akb07, akb08,   &
-  &          akb09, akb10, akb11, akb12, akb13, akb14, akb15, akb16, akb17,   &
-  &          akb18, akb19, akb20, akb21, akb22, akb23, akb24, akb25, akfc01,  &
-  &          akfc02, akfc03, akfc04, akfc05, akfc06, akfc07, akfc08, akfc09,  &
-  &          akfc10, akfc11, akfc12, akfc13, akfc14, akfc15, akfc16, akfc17,  &
-  &          akfc18, akfc19, akfc20, akfc21, akfc22, akfc23, akfc24, akfc25,  &
-  &          akbc01, akbc02, akbc03, akbc04, akbc05, akbc06, akbc07, akbc08,  &
-  &          akbc09, akbc10, akbc11, akbc12, akbc13, akbc14, akbc15, akbc16,  &
-  &          akbc17, akbc18, akbc19, akbc20, akbc21, akbc22, akbc23, akbc24,  &
-  &          akbc25, ar01, ar02, ar03, ar04, ar05, ar06, ar07, ar08, ar09,    &
-  &          ar10, ar11, ar12, ar13, ar14, ar15, ar16, ar17, ar18, ar19, ar20,&
-  &          ar21, ar22, ar23, ar24, ar25, awh2, awo2, awh, awo, awoh, awh2o, &
-  &          awho2, awh2o2, ath2, ato2, ath, ato, atoh, ath2o, atho2, ath2o2, &
-  &          afg, adlt, adlt1, adlt2, asgm, atmx, aaa, abb, ajcb, aflgm1,     &
-  &          aflgm2, aflgm3, aflgm4, aflgm5, aflgm6, aflgm7, aflgm8
-  integer :: i, j, k, l, itm, m
-! number of chemical species
+  ! number of reaction constant
   integer, parameter :: lsp = 9
-! number of reaction constant
   integer, parameter :: lnr = 32
+  integer, parameter :: len = 25
+  integer, parameter :: ler = 28
+  integer, parameter :: lnn = 31
+
+  real(8) :: at, afmt, aeng, afdd, afd, af, addd, adt, druo, phti
+  real(8) :: ar, au, av, awk1, awk2, awk3, totaldens, totalh
+  real(8) :: atmp, arho, art, atmpr, atmpl, aruo, atime
+  real(8) :: ae(lnr), akf(lnr), ax(lsp), ah(lsp), as(lsp), ag(len), ahh(len), &
+  &          akb(lnr), akfc(lnn), akbc(lnn), ars(len), adf(ler), akft(len),   &
+  &          adb(ler), akbt(len), adtd(lsp), admd(lsp), akc(lsp), aw(lsp),    &
+  &          a1diag(8), akfr4(lsp), akfr5(lsp), akbr4(lsp), akbr5(lsp),       &
+  &          askrwp(lsp), atrpr4(lsp), atrpr5(lsp), add02, add03, add04,      &
+  &          add05, atrb2, atrb3, atrb4, adfg2, adfg3, adfg4, am04, am05,     &
+  &          am09, am21, am23, am24, am25, atrp2, atrp3, atrp4, atrp5,        &
+  &          atrpl2, atrpl3, atrpl4, adlp2, adlp3, adlp4, atra2, atra3,       &
+  &          atra4, atrf2, atrf3, atrf4, adpi2, adpi3, adpi4, adpi5, arr,     &
+  &          arf09, arf10, arf21, arf22, arf23, arf24, arf25,                 &
+  &          arb09, arb10, arb21, arb22, arb23, arb24, arb25,                 &
+  &          asktwc, asktwp, atmaxi, acon, apt, aptr, acn, ajcb,              &
+  &          akfr2, akfr3, akbr2, akbr3, askrwc, atrr2, atrr3, atrr4, atrp4r, &
+  &          atrp5r, dppd(lsp), dcpo, ahti(lsp), aj(lsp,lsp)
+
+  integer :: i, j, k, itm
 ! constant parameter
   real(8), parameter :: arc = 1.9872d0, arp = 82.06d0
   real(8), parameter :: arcr = 1.d0 / arc
@@ -80,91 +69,103 @@ subroutine imtss(dtmp,dprs,aYi,delt)
 ! limiter
   real(8), parameter :: aemn = -130.d0, aemx = 130.d0
   real(8), parameter :: akmn = 1.d-35, akmx = 1.d+35
-! MTS limiter
-  real(8), parameter :: aber = 1.d-13, arer = 1.d-5
-  real(8), parameter :: aeps = 1.d-35, atmn = 1.d-12
+  real(8), parameter :: aeps = 1.d-35
 ! reaction frozen temperature
   real(8), parameter :: a400 = 400.d0
   real(8), parameter :: aerr = 1.d-12
   integer, parameter :: itr = 10 ! number of iteration in Newton method
-!
 ! constant parameter for Troe (for reduction)
   real(8), parameter :: atrc8 =  -0.4d0 - 0.67d0*log10(0.8d0)
   real(8), parameter :: atrn8 = 0.75d0 - 1.27d0*log10(0.8d0)
   real(8), parameter :: atrc7 = -0.4d0 - 0.67d0*log10(0.7d0)
   real(8), parameter :: atrn7 = 0.75d0 - 1.27d0*log10(0.7d0)
+  real(8), parameter :: atrf7 = log10(0.7d0)
+  real(8), parameter :: atrf8 = log10(0.8d0)
 
-! reaction parameter for stanford model
-  real(8), parameter :: acf(1:lnr) = (/ 1.04d+14, 5.59d+13, 3.70d+19,         &
-  &                                     5.59d+13, 5.69d+18, 5.59d+13,         &
-  &                                     2.65d+19, 8.59d+14, 9.55d+15,         &
-  &                                     1.74d+12, 7.59d+13, 2.89d+13,         &
-  &                                     1.30d+11, 4.20d+14, 6.06d+27,         &
-  &                                     1.00d+26, 3.57d+4,  3.82d+12,         &
-  &                                     8.79d+14, 2.17d+8,  7.08d+13,         &
-  &                                     1.45d+12, 3.66d+6,  1.63d+13,         &
-  &                                     1.21d+7,  1.02d+13, 8.43d+11,         &
-  &                                     5.84d+18, 9.03d+14, 4.58d+19,         &
-  &                                     6.16d+15, 4.71d+18 /)
-  real(8), parameter :: ant(1:lnr) = (/ 0.0d0,  0.2d0, -1.0d0,  0.2d0,        &
-  &                                    -1.1d0,  0.2d0, -1.3d0,  0.0d0,        &
-  &                                     0.0d0,  0.0d0,  0.0d0,  0.0d0,        &
-  &                                     0.0d0,  0.0d0,-3.31d0,-2.44d0,        &
-  &                                     2.4d0,  0.0d0,  0.0d0, 1.52d0,        &
-  &                                     0.0d0,  0.0d0,2.087d0,  0.0d0,        &
-  &                                     2.0d0,  0.0d0,  0.0d0, -1.1d0,        &
-  &                                     0.0d0, -1.4d0, -0.5d0, -1.0d0 /)
-  real(8), parameter :: aea(1:lnr) = (/ 15286d0,  0.0d0,   0.0d0,  0.0d0,     &
-  &                                       0.0d0,  0.0d0,   0.0d0,48560d0,     &
-  &                                     42203d0,  318d0,  7269d0, -500d0,     &
-  &                                     -1603d0,11980d0,120770d0,120160d0,    &
-  &                                     -2111d0, 7948d0, 19170d0,  3457d0,    &
-  &                                       300d0,  0.0d0, -1450d0, -445d0,     &
-  &                                      5200d0, 3577d0, 3970d0,104380d0,     &
-  &                                     96070d0,104380d0, 0.0d0,  0.0d0 /)
+ !reaction parameters
+  !modified Arrhenius equation, k = A * T^n * exp(-E/RT) : acf=A, ant=n, aea=E
+  real(8), parameter :: acf(1:lnr) =                                          &
+  & (/ 1.04000d+14, 5.59000d+13, 3.70000d+19, 5.59000d+13, 5.69000d+18,       &
+  &    5.59000d+13, 2.65000d+19, 8.59000d+14, 9.55000d+15, 1.74000d+12,       &
+  &    7.59000d+13, 2.89000d+13, 1.30000d+11, 4.20000d+14, 6.06000d+27,       &
+  &    1.00000d+26, 3.57000d+04, 3.82000d+12, 8.79000d+14, 2.17000d+08,       &
+  &    7.08000d+13, 1.45000d+12, 3.66000d+06, 1.63000d+13, 1.21000d+07,       &
+  &    1.02000d+13, 8.43000d+11, 5.84000d+18, 9.03000d+14, 4.58000d+19,       &
+  &    6.16000d+15, 4.71000d+18 /)
+  real(8), parameter :: ant(1:lnr) =                                          &
+  & (/ 0.00000d+00, 0.20000d+00,-1.00000d+00, 0.20000d+00,-1.10000d+00,       &
+  &    0.20000d+00,-1.30000d+00, 0.00000d+00, 0.00000d+00, 0.00000d+00,       &
+  &    0.00000d+00, 0.00000d+00, 0.00000d+00, 0.00000d+00,-3.31000d+00,       &
+  &   -2.44000d+00, 2.40000d+00, 0.00000d+00, 0.00000d+00, 1.52000d+00,       &
+  &    0.00000d+00, 0.00000d+00, 2.08700d+00, 0.00000d+00, 2.00000d+00,       &
+  &    0.00000d+00, 0.00000d+00,-1.10000d+00, 0.00000d+00,-1.40000d+00,       &
+  &   -0.50000d+00,-1.00000d+00 /)
+  real(8), parameter :: aea(1:lnr) =                                          &
+  & (/  15286.d+00,      0.d+00,      0.d+00,      0.d+00,      0.d+00,       &
+  &         0.d+00,      0.d+00,  48560.d+00,  42203.d+00,    318.d+00,       &
+  &      7269.d+00,   -500.d+00,  -1603.d+00,  11980.d+00, 120770.d+00,       &
+  &    120160.d+00,  -2111.d+00,   7948.d+00,  19170.d+00,   3457.d+00,       &
+  &       300.d+00,      0.d+00,  -1450.d+00,   -445.d+00,   5200.d+00,       &
+  &      3577.d+00,   3970.d+00, 104380.d+00,  96070.d+00, 104380.d+00,       &
+  &         0.d+00,      0.d+00 /)
+
+  !difference of mole
+  integer, parameter :: app(1:len) =                                          &
+  & (/ 0, 1, 1, 1,-1, 0, 0, 0,-1,-1,                                          &
+  &    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,                                          &
+  &   -1,-1,-1, 1, 1 /)
+
+  !adjust unit
+  real(8), parameter :: autf(1:ler) =                                         &
+  & (/ 1.d-3, 1.d-3, 1.d-3, 1.d-3, 1.d+0, 1.d-3, 1.d-3, 1.d-3, 1.d-3, 1.d-3,  &
+  &    1.d-3, 1.d-3, 1.d-3, 1.d-3, 1.d-3, 1.d-3, 1.d-3, 1.d-3, 1.d-3, 1.d-3,  &
+  &    1.d-3, 1.d-3, 1.d-3, 1.d-3, 1.d-3, 1.d-3, 1.d-6, 1.d-6 /)
+
+  real(8), parameter :: autb(1:ler) =                                         &
+  & (/ 1.d-3, 1.d+0, 1.d+0, 1.d+0, 1.d-3, 1.d-3, 1.d-3, 1.d-3, 1.d-3, 1.d-3,  &
+  &    1.d-6, 1.d-6, 1.d-3, 1.d-3, 1.d-3, 1.d-3, 1.d-3, 1.d-3, 1.d-3, 1.d-3,  &
+  &    1.d-3, 1.d-3, 1.d-3, 1.d-6, 1.d-6, 1.d-6, 1.d-3, 1.d-3 /)
 
 !///////////////////////////////////////////////////////////////////////
 !//////////////////////  stanford reaction model   /////////////////////
 !///////////////////////////////////////////////////////////////////////
 !
-!        1 :  h    + o2         = oh   + o
-!        2 :  h    + o2   + h2o = ho2  + h2o        !pressure-dependent
-!        3 :  h    + o2   + o2  = ho2  + o2         !pressure-dependent
-!        4 :  h    + o2   + M   = ho2  + M          !pressure-dependent
-!        5 :  h2o2        + M   = 2oh  + M          !pressure-dependent
-!        6 :  oh   + h2o2       = h2o  + ho2        !non-Arrhenius
-!        7 :  oh   + ho2        = h2o  + o2
-!        8 :  ho2  + ho2        = h2o2 + o2         !non-Arrhenius
-!        9 :  h2o         + M   = h    + oh  + M
-!        10:  h2o         + h2o = oh   + h   + h2o
-!        11:  oh   + oh         = h2o  + o
-!        12:  o    + h2         = h    + oh         !non-Arrhenius
-!        13:  h2   + oh         = h2o  + h
-!        14:  h    + ho2        = oh   + oh
-!        15:  h    + ho2        = h2o  + o
-!        16:  h    + ho2        = h2   + o2
-!        17:  o    + ho2        = oh   + o2
-!        18:  h2o2 + h          = ho2  + h2
-!        19:  h2o2 + h          = h2o  + oh
-!        20:  h2o2 + o          = oh   + ho2
-!        21:  h2          + M   = h    + h   + M
-!        22:  h2          + h2  = h    + h   + h2
-!        23:  h2          + M   = h    + h   + M    ! M = O2, N2
-!        24:  o    + o    + M   = o2         + M
-!        25:  o    + h    + M   = oh         + M
+!        1 :  h    + o2           = oh   + o
+!        2 :  h    + o2   + (h2o) = ho2  + (h2o)        !pressure-dependent
+!        3 :  h    + o2   + (o2)  = ho2  + (o2)         !pressure-dependent
+!        4 :  h    + o2   + (M)   = ho2  + (M)          !pressure-dependent
+!        5 :  h2o2        + (M)   = 2oh  + (M)          !pressure-dependent
+!        6 :  oh   + h2o2         = h2o  + ho2          !non-Arrhenius
+!        7 :  oh   + ho2          = h2o  + o2
+!        8 :  ho2  + ho2          = h2o2 + o2           !non-Arrhenius
+!        9 :  h2o         + [M]   = h    + oh  + [M]
+!        10:  h2o         + [h2o] = oh   + h   + [h2o]
+!        11:  oh   + oh           = h2o  + o
+!        12:  o    + h2           = h    + oh           !non-Arrhenius
+!        13:  h2   + oh           = h2o  + h
+!        14:  h    + ho2          = oh   + oh
+!        15:  h    + ho2          = h2o  + o
+!        16:  h    + ho2          = h2   + o2
+!        17:  o    + ho2          = oh   + o2
+!        18:  h2o2 + h            = ho2  + h2
+!        19:  h2o2 + h            = h2o  + oh
+!        20:  h2o2 + o            = oh   + ho2
+!        21:  h2          + [M]   = h    + h   + [M]
+!        22:  h2          + [h2]  = h    + h   + [h2]
+!        23:  h2          + [M]   = h    + h   + [M]    !M = N2 and O2 case
+!        24:  o    + o    + [M]   = o2         + [M]
+!        25:  o    + h    + [M]   = oh         + [M]
 !
 !///////////////////////////////////////////////////////////////////////
 !///////////////////////////////////////////////////////////////////////
 
-!  bdbg = 'on'
-
 !----------------------------------------------------------------------
-  if (bdbg(1:2) == 'on') write(6,*) 'in imtss '
+  if (bdbg(1:2) == 'on') write(lwrt,*) 'in ipdys'
 !-----------------------------------------------------------------------
 
 ! allocate
-  allocate(adns(lsp),afm(lsp),ab(6), dml(lsp), dmlr(lsp), dmlru(lsp), dplh(7,lsp,3), atmw(lsp))
-
+  allocate(adns(lsp),adnsr(lsp),afm(lsp),ab(6),arhs(lsp),aj(lsp,lsp))
+  allocate(dml(lsp), dmlr(lsp), dmlru(lsp), dplh(7,lsp,3), atmw(lsp))
 
 ! chemical_database
 
@@ -255,11 +256,12 @@ subroutine imtss(dtmp,dprs,aYi,delt)
     &  0.35d+01, 0.d0, 0.d0, 0.d0, 0.d0, 0.d0, 0.d0                             &
     &  /), (/7,lsp,3/))
 
+
   atmp = dtmp
   atmpr = 1/dtmp
 
   atime   = 0.d0
-  ah      = 0.d0
+  totalh  = 0.d0
   atmw(:) = aYi(:)*dmlr(:)      ! amlf(:)/atw
   druo    = dru*(sum(atmw(:)))
   itm = 1 + int(a05 + sign(a05,(atmp - dplt)))
@@ -273,239 +275,117 @@ subroutine imtss(dtmp,dprs,aYi,delt)
 
   do i = 1, lsp
     call calc_phti(i,itm,dtmp,phti,dmlr,dplh)
-    ahti = phti
-    ah   = ah  + adns(i)*ahti/arho
+    ahti(i) = phti
+    totalh   = totalh  + adns(i)*ahti(i)/arho
   end do
-  aeng = dprs - ah*arho
-
-  aflag = a05 + sign(a05,(atmp - a400))
-
-! flag for frozen species :: aflgmi (i species)
-  aflgm1 = 1.d0 * aflag
-  aflgm2 = 1.d0 * aflag
-  aflgm3 = 1.d0 * aflag
-  aflgm4 = 1.d0 * aflag
-  aflgm5 = 1.d0 * aflag
-  aflgm6 = 1.d0 * aflag
-  aflgm7 = 1.d0 * aflag
-  aflgm8 = 1.d0 * aflag
-
-  do m = 1, 1000000    !MTS loop
-
-    atmpr = 1.d0 / atmp
-
-    art = arcr*atmpr
-!      art  =  1.0d0/(arc*atmp)
+  aeng = dprs - totalh*arho
+  art = arcr*atmpr
 
 !     [E/R]
 !     activation energy
 
-    ae01   = min(aemx,max(aemn,-aea( 1)*art))
-    ae02h  = min(aemx,max(aemn,-aea( 2)*art))
-    ae02l  = min(aemx,max(aemn,-aea( 3)*art))
-    ae03h  = min(aemx,max(aemn,-aea( 4)*art))
-    ae03l  = min(aemx,max(aemn,-aea( 5)*art))
-    ae04h  = min(aemx,max(aemn,-aea( 6)*art))
-    ae04l  = min(aemx,max(aemn,-aea( 7)*art))
-    ae05h  = min(aemx,max(aemn,-aea( 8)*art))
-    ae05l  = min(aemx,max(aemn,-aea( 9)*art))
-    ae06a  = min(aemx,max(aemn,-aea(10)*art))
-    ae06b  = min(aemx,max(aemn,-aea(11)*art))
-    ae07   = min(aemx,max(aemn,-aea(12)*art))
-    ae08a  = min(aemx,max(aemn,-aea(13)*art))
-    ae08b  = min(aemx,max(aemn,-aea(14)*art))
-    ae09   = min(aemx,max(aemn,-aea(15)*art))
-    ae10   = min(aemx,max(aemn,-aea(16)*art))
-    ae11   = min(aemx,max(aemn,-aea(17)*art))
-    ae12a  = min(aemx,max(aemn,-aea(18)*art))
-    ae12b  = min(aemx,max(aemn,-aea(19)*art))
-    ae13   = min(aemx,max(aemn,-aea(20)*art))
-    ae14   = min(aemx,max(aemn,-aea(21)*art))
-    ae15   = min(aemx,max(aemn,-aea(22)*art))
-    ae16   = min(aemx,max(aemn,-aea(23)*art))
-    ae17   = min(aemx,max(aemn,-aea(24)*art))
-    ae18   = min(aemx,max(aemn,-aea(25)*art))
-    ae19   = min(aemx,max(aemn,-aea(26)*art))
-    ae20   = min(aemx,max(aemn,-aea(27)*art))
-    ae21   = min(aemx,max(aemn,-aea(28)*art))
-    ae22   = min(aemx,max(aemn,-aea(29)*art))
-    ae23   = min(aemx,max(aemn,-aea(30)*art))
-    ae24   = min(aemx,max(aemn,-aea(31)*art))
-    ae25   = min(aemx,max(aemn,-aea(32)*art))
-
+      ae(1:lnr)   = min(aemx,max(aemn,-aea(1:lnr)*art))
 
 !     [kf]
 !     forward reaction rate constant
 !     Arrhenius-s form : kf=AT**n exp(-Ea/RT)
 
-    akf01  = acf( 1)*exp(ae01)                ! n = 0.0d0
-    akf02h = acf( 2)*atmp**ant( 2)*exp(ae02h) ! n = 0.2d0
-    akf02l = acf( 3)*atmpr*exp(ae02l)         ! n = -1.d0
-    akf03h = acf( 4)*atmp**ant( 4)*exp(ae03h) ! n = 0.2d0
-    akf03l = acf( 5)*atmp**ant( 5)*exp(ae03l) ! n = -1.1d0
-    akf04h = acf( 6)*atmp**ant( 6)*exp(ae04h) ! n = 0.2d0
-    akf04l = acf( 7)*atmp**ant( 7)*exp(ae04l) ! n = -1.3d0
-    akf05h = acf( 8)*exp(ae05h)               ! n = 0.d0
-    akf05l = acf( 9)*exp(ae05l)               ! n = 0.d0
-    akf06a = acf(10)*exp(ae06a)               ! n = 0.d0
-    akf06b = acf(11)*exp(ae06b)               ! n = 0.d0
-    akf07  = acf(12)*exp(ae07)                ! n = 0.d0
-    akf08a = acf(13)*exp(ae08a)               ! n = 0.d0
-    akf08b = acf(14)*exp(ae08b)               ! n = 0.d0
-    akf09  = acf(15)*atmp**ant(15)*exp(ae09)  ! n = -3.31d0
-    akf10  = acf(16)*atmp**ant(16)*exp(ae10)  ! n = -2.44d0
-    akf11  = acf(17)*atmp**ant(17)*exp(ae11)  ! n = 2.4d0
-    akf12a = acf(18)*exp(ae12a)               ! n = 0.d0
-    akf12b = acf(19)*exp(ae12b)               ! n = 0.d0
-    akf13  = acf(20)*atmp**ant(20)*exp(ae13)  ! n = 1.52d0
-    akf14  = acf(21)*exp(ae14)                ! n = 0.d0
-    akf15  = acf(22)*exp(ae15)                ! n = 0.d0
-    akf16  = acf(23)*atmp**ant(23)*exp(ae16)  ! n = 2.087d0
-    akf17  = acf(24)*exp(ae17)                ! n = 0.d0
-    akf18  = acf(25)*atmp*atmp*exp(ae18)      ! n = 2.d0
-    akf19  = acf(26)*exp(ae19)                ! n = 0.d0
-    akf20  = acf(27)*exp(ae20)                ! n = 0.d0
-    akf21  = acf(28)*atmp**ant(28)*exp(ae21)  ! n = -1.1d0
-    akf22  = acf(29)*exp(ae22)                ! n = 0.d0
-    akf23  = acf(30)*atmp**ant(30)*exp(ae23)  ! n = -1.4d0
-    akf24  = acf(31)*sqrt(atmpr)*exp(ae24)    ! n = -0.5d0
-    akf25  = acf(32)*atmpr*exp(ae25)          ! n = -1.d0
-
-
-!      akf01  = acf( 1)*atmp**ant( 1)*exp(ae01)
-!      akf02h = acf( 2)*atmp**ant( 2)*exp(ae02h)
-!      akf02l = acf( 3)*atmp**ant( 3)*exp(ae02l)
-!      akf03h = acf( 4)*atmp**ant( 4)*exp(ae03h)
-!      akf03l = acf( 5)*atmp**ant( 5)*exp(ae03l)
-!      akf04h = acf( 6)*atmp**ant( 6)*exp(ae04h)
-!      akf04l = acf( 7)*atmp**ant( 7)*exp(ae04l)
-!      akf05h = acf( 8)*atmp**ant( 8)*exp(ae05h)
-!      akf05l = acf( 9)*atmp**ant( 9)*exp(ae05l)
-!      akf06a = acf(10)*atmp**ant(10)*exp(ae06a)
-!      akf06b = acf(11)*atmp**ant(11)*exp(ae06b)
-!      akf07  = acf(12)*atmp**ant(12)*exp(ae07)
-!      akf08a = acf(13)*atmp**ant(13)*exp(ae08a)
-!      akf08b = acf(14)*atmp**ant(14)*exp(ae08b)
-!      akf09  = acf(15)*atmp**ant(15)*exp(ae09)
-!      akf10  = acf(16)*atmp**ant(16)*exp(ae10)
-!      akf11  = acf(17)*atmp**ant(17)*exp(ae11)
-!      akf12a = acf(18)*atmp**ant(18)*exp(ae12a)
-!      akf12b = acf(19)*atmp**ant(19)*exp(ae12b)
-!      akf13  = acf(20)*atmp**ant(20)*exp(ae13)
-!      akf14  = acf(21)*atmp**ant(21)*exp(ae14)
-!      akf15  = acf(22)*atmp**ant(22)*exp(ae15)
-!      akf16  = acf(23)*atmp**ant(23)*exp(ae16)
-!      akf17  = acf(24)*atmp**ant(24)*exp(ae17)
-!      akf18  = acf(25)*atmp**ant(25)*exp(ae18)
-!      akf19  = acf(26)*atmp**ant(26)*exp(ae19)
-!      akf20  = acf(27)*atmp**ant(27)*exp(ae20)
-!      akf21  = acf(28)*atmp**ant(28)*exp(ae21)
-!      akf22  = acf(29)*atmp**ant(29)*exp(ae22)
-!      akf23  = acf(30)*atmp**ant(30)*exp(ae23)
-!      akf24  = acf(31)*atmp**ant(31)*exp(ae24)
-!      akf25  = acf(32)*atmp**ant(32)*exp(ae25)
+      akf(1:lnr)  = acf(1:lnr)*atmp**ant(1:lnr)*exp(ae(1:lnr))
 
 !     [Xi]
 !     concentration of species Xi
 !     mole density
 
-      ah2   = adns(1) * dmlr(1)
-      ao2   = adns(2) * dmlr(2)
-      ah    = adns(3) * dmlr(3)
-      ao    = adns(4) * dmlr(4)
-      aoh   = adns(5) * dmlr(5)
-      ah2o  = adns(6) * dmlr(6)
-      aho2  = adns(7) * dmlr(7)
-      ah2o2 = adns(8) * dmlr(8)
-      an2   = adns(9) * dmlr(9)
+      ax(1:lsp)   = adns(1:lsp) * dmlr(1:lsp)
 
-!    [M]
-!    Third Body
+!     [M]
+!     Third Body
 
-      am04  = ah2*1.5d0  +ao2*0.d0  +ah  +ao  +aoh  +ah2o*0.d0  +aho2         &
-  &         + ah2o2      +an2
-      am05  = ah2        +ao2      +ah  +ao  +aoh  +ah2o*9.0d0  +aho2         &
-  &         + ah2o2      +an2*1.5d0
-      am09  = ah2*3.0d0  +ao2*1.5d0  +ah  +ao  +aoh  +ah2o*0.0d0              &
-  &         + aho2  + ah2o2    +an2*2.0d0
-      am21  = ah2*0.0d0  +ao2*0.0d0  +ah  +ao  +aoh  +ah2o*14.4d0             &
-  &         + aho2 + ah2o2    +an2*0.0d0
-      am23  = ao2        +an2
-      am24  = ah2*2.5d0  +ao2      +ah  +ao  +aoh  +ah2o*12d0   +aho2         &
-  &         + ah2o2      +an2
-      am25  = ah2*2.5d0  +ao2      +ah  +ao  +aoh  +ah2o*12d0   +aho2         &
-  &         + ah2o2      +an2
+      am04  = ax(1)*1.5d0  +ax(2)*0.d0  +ax(3)  +ax(4)  +ax(5)  +ax(6)*0.d0  +ax(7)         &
+  &         + ax(8)      +ax(9)
+      am05  = ax(1)        +ax(2)      +ax(3)  +ax(4)  +ax(5)  +ax(6)*9.0d0  +ax(7)         &
+  &         + ax(8)      +ax(9)*1.5d0
+      am09  = ax(1)*3.0d0  +ax(2)*1.5d0  +ax(3)  +ax(4)  +ax(5)  +ax(6)*0.0d0              &
+  &         + ax(7)  + ax(8)    +ax(9)*2.0d0
+      am21  = ax(1)*0.0d0  +ax(2)*0.0d0  +ax(3)  +ax(4)  +ax(5)  +ax(6)*14.4d0             &
+  &         + ax(7) + ax(8)    +ax(9)*0.0d0
+      am23  = ax(2)        +ax(9)
+      am24  = ax(1)*2.5d0  +ax(2)      +ax(3)  +ax(4)  +ax(5)  +ax(6)*12d0   +ax(7)         &
+  &         + ax(8)      +ax(9)
+      am25  = ax(1)*2.5d0  +ax(2)      +ax(3)  +ax(4)  +ax(5)  +ax(6)*12d0   +ax(7)         &
+  &         + ax(8)      +ax(9)
 
 !-----------------------------------------------------------
 !  the reaction rate constant of #02
 
-      atrp = akf02l*ah2o*1.0d-3/akf02h
+      atrp2  = akf(3)*ax(6)*1.0d-3/akf(2)
+      atrpl2 = log10(atrp2+1.0d-30)
+      adlp2  = 1.d0/(atrn8-0.14d0*(atrpl2+atrc8))
+      atra2  = (atrpl2+atrc8)*adlp2
+      atrb2  = 1.d0/(1.d0 + atra2*atra2)
+      atrf2  = 0.8d0**atrb2
+      adpi2  = 1.d0/(1.d0 + atrp2)
 
-!      atrc = -0.4d0 - 0.67d0*log10(0.8d0)
-!      atrn = 0.75d0 - 1.27d0*log10(0.8d0)
-
-      atrpl= log10(atrp+1.0d-30)
-      atra = (atrpl+atrc8)/(atrn8-0.14d0*(atrpl+atrc8))
-      atrb = 1.d0/(1.d0 + atra*atra)
-      atrf = 0.8d0**atrb
-
-      akf02 = akf02h*atrp/(1.d0+atrp)*atrf
+      akf(2) = akf(2)*atrp2*adpi2*atrf2
 !----------------------------------------------------------
 !  the reaction rate constant of #03
 
-      atrp = akf03l*ao2*1.0d-3/akf03h
+      atrp3  = akf(5)*ax(2)*1.0d-3/akf(4)
+      atrpl3 = log10(atrp3+1.0d-30)
+      adlp3  = 1.d0/(atrn7-0.14d0*(atrpl3+atrc7))
+      atra3  = (atrpl3+atrc7)*adlp3
+      atrb3  = 1.d0/(1.d0 + atra3*atra3)
+      atrf3  = 0.7d0**atrb3
+      adpi3  = 1.d0/(1.d0 + atrp3)
 
-!      atrc = -0.4d0 - 0.67d0*log10(0.7d0)
-!      atrn = 0.75d0 - 1.27d0*log10(0.7d0)
-
-      atrpl= log10(atrp+1.0d-30)
-      atra = (atrpl+atrc7)/(atrn7-0.14d0*(atrpl+atrc7))
-      atrb = 1.d0/(1.d0 + atra*atra)
-      atrf = 0.7d0**atrb
-
-      akf03 = akf03h*atrp/(1.d0+atrp)*atrf
+      akf(3) = akf(4)*atrp3*adpi3*atrf3
 
 !----------------------------------------------------------
 !  the reaction rate constant of #04
 
-      atrp = akf04l*am04*1.0d-3/akf04h
+      atrp4  = akf(7)*am04*1.0d-3/akf(6)
+      atrp4r = 1.0d0/atrp4
+      atrpl4 = log10(atrp4+1.0d-30)
+      adlp4  = 1.d0/(atrn7-0.14d0*(atrpl4+atrc7))
+      atra4  = (atrpl4+atrc7)*adlp4
+      atrb4  = 1.d0/(1.d0 + atra4*atra4)
+      atrf4  = 0.7d0**atrb4
+      adpi4  = 1.d0/(1.d0 + atrp4)
+      atrpr4(1  ) = akf(7)*1.5d-3*dmlr(1  )/akf(6)
+      atrpr4(2  ) = 0.d0
+      atrpr4(3:5) = akf(7)*1.0d-3*dmlr(3:5)/akf(6)
+      atrpr4(6  ) = 0.d0
+      atrpr4(7:9) = akf(7)*1.0d-3*dmlr(7:9)/akf(6)
 
-!      atrc = -0.4d0 - 0.67d0*log10(0.7d0)
-!      atrn = 0.75d0 - 1.27d0*log10(0.7d0)
-
-      atrpl= log10(atrp+1.0d-30)
-      atra = (atrpl+atrc7)/(atrn7-0.14d0*(atrpl+atrc7))
-      atrb = 1.d0/(1.d0 + atra*atra)
-      atrf = 0.7d0**atrb
-
-      akf04 = akf04h*atrp/(1.d0+atrp)*atrf
+      akf(4) = akf(6)*atrp4*adpi4*atrf4
 
 !----------------------------------------------------------
 !  the reaction rate constant of #05
 
-      atrp = akf05l*am05*1.0d-3/akf05h
+      atrp5  = akf(9)*am05*1.0d-3/akf(8)
+      atrp5r = 1.0d0/atrp5
+      adpi5  = 1.d0/(1.d0 + atrp5)
+      atrpr5(1:5) = akf(9)*1.0d-3*dmlr(1:5)/akf(8)
+      atrpr5(6  ) = akf(9)*9.0d-3*dmlr(6  )/akf(8)
+      atrpr5(7:8) = akf(9)*1.0d-3*dmlr(7:8)/akf(8)
+      atrpr5(9  ) = akf(9)*1.5d-3*dmlr(9  )/akf(8)
 
-!         atrc = -0.4 - 0.67*log10(0.8)
-!         atrn = 0.75 - 1.27*log10(0.8)
+      akf(5) = akf(8)*atrp5*adpi5
 
-!         atrpl= log10(atrp)
-!         atra = (atrpl+atrc)/(atrn-0.14*(atrpl+atrc))
-!         atrb = 1.0/(1.0 + atra*atra)
-!         atrf = 0.7**atrb
-
-!         akf05 = akf05h*atrp/(1.0+atrp)*atrf
-      akf05 = akf05h*atrp/(1.d0+atrp)
 !-----------------------------------------------------------
 !  the reaction rate constant of #06 & #08 & #12
 
-      akf06 = akf06a + akf06b
-      akf08 = akf08a + akf08b
-      akf12 = akf12a + akf12b
-
+!      akf06 = akf06a + akf06b
+!      akf08 = akf08a + akf08b
+!      akf12 = akf12a + akf12b
 !------------------------------------------------------------
 
-!    [kb]
-!    backward reaction rate constant
+!     re-contaning akf
+      akf(6:ler) = akf(10:lnr)
+
+
+! [kb]
+! backward reaction rate constant
 
 ! From the analysis in Intel Adviser,
 ! using user function in the loop takes longer time to calculate.
@@ -514,572 +394,790 @@ subroutine imtss(dtmp,dprs,aYi,delt)
 !
 ! Demerit is that the code is not beautiful without using user function
 
+
       itm = 1 + int(a05 + sign(a05,(atmp - dplt)))
 
       atmpl = log(atmp)
 
-!..01
-      as1 =     dplh(1,ls1,itm)*atmpl                                         &
-  &       + atmp*(dplh(2,ls1,itm)     + atmp*(dplh(3,ls1,itm)*a12             &
-  &       + atmp*(dplh(4,ls1,itm)*a13 + atmp*(dplh(5,ls1,itm)*a14))))         &
-  &       + dplh(7,ls1,itm)
-!..02
-      as2 =     dplh(1,ls2,itm)*atmpl                                         &
-  &       + atmp*(dplh(2,ls2,itm)     + atmp*(dplh(3,ls2,itm)*a12             &
-  &       + atmp*(dplh(4,ls2,itm)*a13 + atmp*(dplh(5,ls2,itm)*a14))))         &
-  &       + dplh(7,ls2,itm)
-!..03
-      as3 =     dplh(1,ls3,itm)*atmpl                                         &
-  &       + atmp*(dplh(2,ls3,itm)     + atmp*(dplh(3,ls3,itm)*a12             &
-  &       + atmp*(dplh(4,ls3,itm)*a13 + atmp*(dplh(5,ls3,itm)*a14))))         &
-  &       + dplh(7,ls3,itm)
-!..04
-      as4 =     dplh(1,ls4,itm)*atmpl                                         &
-  &       + atmp*(dplh(2,ls4,itm)     + atmp*(dplh(3,ls4,itm)*a12             &
-  &       + atmp*(dplh(4,ls4,itm)*a13 + atmp*(dplh(5,ls4,itm)*a14))))         &
-  &       + dplh(7,ls4,itm)
-!..05
-      as5 =     dplh(1,ls5,itm)*atmpl                                         &
-  &       + atmp*(dplh(2,ls5,itm)     + atmp*(dplh(3,ls5,itm)*a12             &
-  &       + atmp*(dplh(4,ls5,itm)*a13 + atmp*(dplh(5,ls5,itm)*a14))))         &
-  &       + dplh(7,ls5,itm)
-!..06
-      as6 =     dplh(1,ls6,itm)*atmpl                                         &
-  &       + atmp*(dplh(2,ls6,itm)     + atmp*(dplh(3,ls6,itm)*a12             &
-  &       + atmp*(dplh(4,ls6,itm)*a13 + atmp*(dplh(5,ls6,itm)*a14))))         &
-  &       + dplh(7,ls6,itm)
-!..07
-      as7 =     dplh(1,ls7,itm)*atmpl                                         &
-  &       + atmp*(dplh(2,ls7,itm)     + atmp*(dplh(3,ls7,itm)*a12             &
-  &       + atmp*(dplh(4,ls7,itm)*a13 + atmp*(dplh(5,ls7,itm)*a14))))         &
-  &       + dplh(7,ls7,itm)
-!..08
-      as8 =     dplh(1,ls8,itm)*atmpl                                         &
-  &       + atmp*(dplh(2,ls8,itm)     + atmp*(dplh(3,ls8,itm)*a12             &
-  &       + atmp*(dplh(4,ls8,itm)*a13 + atmp*(dplh(5,ls8,itm)*a14))))         &
-  &       + dplh(7,ls8,itm)
+      ! make s/R[-], h/RT[-]
+      as(1:8) =       atmpl* dplh(1,1:8,itm)                                 &
+      &             + atmp *(dplh(2,1:8,itm)                                 &
+      &             + atmp *(dplh(3,1:8,itm)*a12                             &
+      &             + atmp *(dplh(4,1:8,itm)*a13                             &
+      &             + atmp *(dplh(5,1:8,itm)*a14))))                         &
+      &             +        dplh(7,1:8,itm)
 
       acon = atmpr
 !     acon = arur*atmpr
 !     acon = 1.0d0/(dru*atmp)
 
-!..01
-      ah1 = (atmp*(dplh(1,ls1,itm)                                            &
-  &         + atmp*(dplh(2,ls1,itm)*a12                                       &
-  &         + atmp*(dplh(3,ls1,itm)*a13                                       &
-  &         + atmp*(dplh(4,ls1,itm)*a14                                       &
-  &         + atmp*(dplh(5,ls1,itm)*a15)))))                                  &
-  &         +     dplh(6,ls1,itm))                                            &
-  &         * acon
-!..02
-      ah2 = (atmp*(dplh(1,ls2,itm)                                            &
-  &         + atmp*(dplh(2,ls2,itm)*a12                                       &
-  &         + atmp*(dplh(3,ls2,itm)*a13                                       &
-  &         + atmp*(dplh(4,ls2,itm)*a14                                       &
-  &         + atmp*(dplh(5,ls2,itm)*a15)))))                                  &
-  &         +     dplh(6,ls2,itm))                                            &
-  &         * acon
-!..03
-      ah3 = (atmp*(dplh(1,ls3,itm)                                            &
-  &         + atmp*(dplh(2,ls3,itm)*a12                                       &
-  &         + atmp*(dplh(3,ls3,itm)*a13                                       &
-  &         + atmp*(dplh(4,ls3,itm)*a14                                       &
-  &         + atmp*(dplh(5,ls3,itm)*a15)))))                                  &
-  &         +     dplh(6,ls3,itm))                                            &
-  &         * acon
-!..04
-      ah4 = (atmp*(dplh(1,ls4,itm)                                            &
-  &         + atmp*(dplh(2,ls4,itm)*a12                                       &
-  &         + atmp*(dplh(3,ls4,itm)*a13                                       &
-  &         + atmp*(dplh(4,ls4,itm)*a14                                       &
-  &         + atmp*(dplh(5,ls4,itm)*a15)))))                                  &
-  &         +     dplh(6,ls4,itm))                                            &
-  &         * acon
-!..05
-      ah5 = (atmp*(dplh(1,ls5,itm)                                            &
-  &         + atmp*(dplh(2,ls5,itm)*a12                                       &
-  &         + atmp*(dplh(3,ls5,itm)*a13                                       &
-  &         + atmp*(dplh(4,ls5,itm)*a14                                       &
-  &         + atmp*(dplh(5,ls5,itm)*a15)))))                                  &
-  &         +     dplh(6,ls5,itm))                                            &
-  &         * acon
-!..06
-      ah6 = (atmp*(dplh(1,ls6,itm)                                            &
-  &         + atmp*(dplh(2,ls6,itm)*a12                                       &
-  &         + atmp*(dplh(3,ls6,itm)*a13                                       &
-  &         + atmp*(dplh(4,ls6,itm)*a14                                       &
-  &         + atmp*(dplh(5,ls6,itm)*a15)))))                                  &
-  &         +     dplh(6,ls6,itm))                                            &
-  &         * acon
-!..07
-      ah7 = (atmp*(dplh(1,ls7,itm)                                            &
-  &         + atmp*(dplh(2,ls7,itm)*a12                                       &
-  &         + atmp*(dplh(3,ls7,itm)*a13                                       &
-  &         + atmp*(dplh(4,ls7,itm)*a14                                       &
-  &         + atmp*(dplh(5,ls7,itm)*a15)))))                                  &
-  &         +     dplh(6,ls7,itm))                                            &
-  &         * acon
-!..08
-      ah8 = (atmp*(dplh(1,ls8,itm)                                            &
-  &         + atmp*(dplh(2,ls8,itm)*a12                                       &
-  &         + atmp*(dplh(3,ls8,itm)*a13                                       &
-  &         + atmp*(dplh(4,ls8,itm)*a14                                       &
-  &         + atmp*(dplh(5,ls8,itm)*a15)))))                                  &
-  &         +     dplh(6,ls8,itm))                                            &
-  &         * acon
+      ah(1:8) =    (atmp*(dplh(1,1:8,itm)                                    &
+      &           + atmp*(dplh(2,1:8,itm)*a12                                &
+      &           + atmp*(dplh(3,1:8,itm)*a13                                &
+      &           + atmp*(dplh(4,1:8,itm)*a14                                &
+      &           + atmp*(dplh(5,1:8,itm)*a15)))))                           &
+      &           +       dplh(6,1:8,itm))                                   &
+      &           * acon
+
+      dcpo = sum(         (dplh(1,1:8,itm)                                 &
+      &            + atmp*(dplh(2,1:8,itm)                               &
+      &            + atmp*(dplh(3,1:8,itm)                               &
+      &            + atmp*(dplh(4,1:8,itm)                               &
+      &            + atmp*(dplh(5,1:8,itm))))))                          &
+      &            * dmlru(1:8) * adns(1:8) ) * ar
 
       apt = arp*atmp
       aptr = 1.d0 / apt
 
+      ahh(1 ) = ah(5) + ah(4) - ah(3) - ah(2)
+      ahh(2 ) = ah(7) - ah(3) - ah(2)
+      ahh(3 ) = ah(7) - ah(3) - ah(2)
+      ahh(4 ) = ah(7) - ah(3) - ah(2)
+      ahh(5 ) = ah(5) + ah(5) - ah(8)
+      ahh(6 ) = ah(6) + ah(7) - ah(5) - ah(8)
+      ahh(7 ) = ah(6) + ah(2) - ah(5) - ah(7)
+      ahh(8 ) = ah(8) + ah(2) - ah(7) - ah(7)
+      ahh(9 ) = ah(3) + ah(5) - ah(6)
+      ahh(10) = ah(5) + ah(3) - ah(6)
+      ahh(11) = ah(6) + ah(4) - ah(5) - ah(5)
+      ahh(12) = ah(3) + ah(5) - ah(4) - ah(1)
+      ahh(13) = ah(6) + ah(3) - ah(1) - ah(5)
+      ahh(14) = ah(5) + ah(5) - ah(3) - ah(7)
+      ahh(15) = ah(6) + ah(4) - ah(3) - ah(7)
+      ahh(16) = ah(1) + ah(2) - ah(3) - ah(7)
+      ahh(17) = ah(5) + ah(2) - ah(4) - ah(7)
+      ahh(18) = ah(7) + ah(1) - ah(8) - ah(3)
+      ahh(19) = ah(6) + ah(5) - ah(8) - ah(3)
+      ahh(20) = ah(5) + ah(7) - ah(8) - ah(4)
+      ahh(21) = ah(3) + ah(3) - ah(1)
+      ahh(22) = ah(3) + ah(3) - ah(1)
+      ahh(23) = ah(3) + ah(3) - ah(1)
+      ahh(24) = ah(2) - ah(4) - ah(4)
+      ahh(25) = ah(5) - ah(4) - ah(3)
 
-!..01
-      ahh01 = ah5+ah4-ah3-ah2
-      ag    = (as5+as4-as3-as2)-ahh01
-      akb01 = akf01/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))))
-!..02
-      ahh02 = ah7    -ah3-ah2
-      ag    = (as7    -as3-as2)-ahh02
-      akb02 = akf02/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))             &
-  &         * apt))
-!..03
-      ahh03 = ah7    -ah3-ah2
-      ag    = (as7    -as3-as2)-ahh03
-      akb03 = akf03/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))             &
-  &         * apt))
-!..04
-      ahh04 = ah7    -ah3-ah2
-      ag    = (as7   -as3-as2)-ahh04
-      akb04 = akf04/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))             &
-  &         * apt))
-!..05
-      ahh05 = ah5+ah5    -ah8
-      ag    = (as5+as5    -as8)-ahh05
-      akb05 = akf05/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))             &
-  &         * aptr))
-!  &         / apt))
-!..06
-      ahh06 = ah6+ah7-ah5-ah8
-      ag    = (as6+as7-as5-as8)-ahh06
-      akb06 = akf06/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))))
-!..07
-      ahh07 = ah6+ah2-ah5-ah7
-      ag    = (as6+as2-as5-as7)-ahh07
-      akb07 = akf07/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))))
-!..08
-      ahh08 = ah8+ah2-ah7-ah7
-      ag    = (as8+as2-as7-as7)-ahh08
-      akb08 = akf08/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))))
-!..09
-      ahh09 = ah3+ah5    -ah6
-      ag    = (as3+as5    -as6)-ahh09
-      akb09 = akf09/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))             &
-  &         * aptr))
-!  &         / apt))
-!..10
-      ahh10 = ah5+ah3    -ah6
-      ag    = (as5+as3    -as6)-ahh10
-      akb10 = akf10/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))             &
-  &         * aptr))
-!  &         / apt))
-!..11
-      ahh11 = ah6+ah4-ah5-ah5
-      ag    = (as6+as4-as5-as5)-ahh11
-      akb11 = akf11/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))))
-!..12
-      ahh12 = ah3+ah5-ah4-ah1
-      ag    = (as3+as5-as4-as1)-ahh12
-      akb12 = akf12/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))))
-!..13
-      ahh13 = ah6+ah3-ah1-ah5
-      ag    = (as6+as3-as1-as5)-ahh13
-      akb13 = akf13/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))))
-!..14
-      ahh14 = ah5+ah5-ah3-ah7
-      ag    = (as5+as5-as3-as7)-ahh14
-      akb14 = akf14/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))))
-!..15
-      ahh15 = ah6+ah4-ah3-ah7
-      ag    = (as6+as4-as3-as7)-ahh15
-      akb15 = akf15/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))))
-!..16
-      ahh16 = ah1+ah2-ah3-ah7
-      ag    = (as1+as2-as3-as7)-ahh16
-      akb16 = akf16/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))))
-!..17
-      ahh17 = ah5+ah2-ah4-ah7
-      ag    = (as5+as2-as4-as7)-ahh17
-      akb17 = akf17/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))))
-!..18
-      ahh18 = ah7+ah1-ah8-ah3
-      ag    = (as7+as1-as8-as3)-ahh18
-      akb18 = akf18/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))))
-!..19
-      ahh19 = ah6+ah5-ah8-ah3
-      ag    = (as6+as5-as8-as3)-ahh19
-      akb19 = akf19/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))))
-!..20
-      ahh20 = ah5+ah7-ah8-ah4
-      ag    = (as5+as7-as8-as4)-ahh20
-      akb20 = akf20/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))))
-!..21
-      ahh21 = ah3+ah3    -ah1
-      ag    = (as3+as3    -as1)-ahh21
-      akb21 = akf21/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))             &
-  &         * aptr))
-!  &         / apt))
-!..22
-      ahh22 = ah3+ah3    -ah1
-      ag    = (as3+as3    -as1)-ahh22
-      akb22 = akf22/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))             &
-  &         * aptr))
-!  &         / apt))
-!..23
-      ahh23 = ah3+ah3    -ah1
-      ag    = (as3+as3    -as1)-ahh23
-      akb23 = akf23/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))             &
-  &         * aptr))
-!  &         / apt))
-!..24
-      ahh24 = ah2    -ah4-ah4
-      ag    = (as2    -as4-as4)-ahh24
-      akb24 = akf24/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))             &
-  &         * apt))
-!..25
-      ahh25 = ah5    -ah4-ah3
-      ag    = (as5    -as4-as3)-ahh25
-      akb25 = akf25/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))             &
-  &         * apt))
+      ag(1 ) = as(5)+as(4)-as(3)-as(2) - ahh(1 )
+      ag(2 ) = as(7)-as(3)-as(2)       - ahh(2 )
+      ag(3 ) = as(7)-as(3)-as(2)       - ahh(3 )
+      ag(4 ) = as(7)-as(3)-as(2)       - ahh(4 )
+      ag(5 ) = as(5)+as(5)-as(8)       - ahh(5 )
+      ag(6 ) = as(6)+as(7)-as(5)-as(8) - ahh(6 )
+      ag(7 ) = as(6)+as(2)-as(5)-as(7) - ahh(7 )
+      ag(8 ) = as(8)+as(2)-as(7)-as(7) - ahh(8 )
+      ag(9 ) = as(3)+as(5)-as(6)       - ahh(9 )
+      ag(10) = as(5)+as(3)-as(6)       - ahh(10)
+      ag(11) = as(6)+as(4)-as(5)-as(5) - ahh(11)
+      ag(12) = as(3)+as(5)-as(4)-as(1) - ahh(12)
+      ag(13) = as(6)+as(3)-as(1)-as(5) - ahh(13)
+      ag(14) = as(5)+as(5)-as(3)-as(7) - ahh(14)
+      ag(15) = as(6)+as(4)-as(3)-as(7) - ahh(15)
+      ag(16) = as(1)+as(2)-as(3)-as(7) - ahh(16)
+      ag(17) = as(5)+as(2)-as(4)-as(7) - ahh(17)
+      ag(18) = as(7)+as(1)-as(8)-as(3) - ahh(18)
+      ag(19) = as(6)+as(5)-as(8)-as(3) - ahh(19)
+      ag(20) = as(5)+as(7)-as(8)-as(4) - ahh(20)
+      ag(21) = as(3)+as(3)-as(1)       - ahh(21)
+      ag(22) = as(3)+as(3)-as(1)       - ahh(22)
+      ag(23) = as(3)+as(3)-as(1)       - ahh(23)
+      ag(24) = as(2)-as(4)-as(4)       - ahh(24)
+      ag(25) = as(5)-as(4)-as(3)       - ahh(25)
+
+      akb(1    ) = akf(1    )/min(akmx,max(akmn,exp(max(aemn,min(ag(1    ),aemx)))     ))  ! 01
+      akb(2 :4 ) = akf(2 :4 )/min(akmx,max(akmn,exp(max(aemn,min(ag(2 :4 ),aemx)))*apt ))  ! 02~04
+      akb(5    ) = akf(5    )/min(akmx,max(akmn,exp(max(aemn,min(ag(5    ),aemx)))*aptr))  ! 05
+      akb(6 :7 ) = akf(6 :7 )/min(akmx,max(akmn,exp(max(aemn,min(ag(6    ),aemx)))     ))  ! 06a,b
+      akb(8    ) = akf(8    )/min(akmx,max(akmn,exp(max(aemn,min(ag(7    ),aemx)))     ))  ! 07
+      akb(9 :10) = akf(9:10 )/min(akmx,max(akmn,exp(max(aemn,min(ag(8    ),aemx)))     ))  ! 08a,b
+      akb(11:12) = akf(11:12)/min(akmx,max(akmn,exp(max(aemn,min(ag(9 :10),aemx)))*aptr))  ! 09~10
+      akb(13   ) = akf(13   )/min(akmx,max(akmn,exp(max(aemn,min(ag(11   ),aemx)))     ))  ! 11
+      akb(14:15) = akf(14:15)/min(akmx,max(akmn,exp(max(aemn,min(ag(12   ),aemx)))     ))  ! 12a,b
+      akb(16:23) = akf(16:23)/min(akmx,max(akmn,exp(max(aemn,min(ag(13:20),aemx)))     ))  ! 13~20
+      akb(24:26) = akf(24:26)/min(akmx,max(akmn,exp(max(aemn,min(ag(21:23),aemx)))*aptr))  ! 21~23
+      akb(27:28) = akf(27:28)/min(akmx,max(akmn,exp(max(aemn,min(ag(24:25),aemx)))*apt ))  ! 24~25
 
 !-----------------------------------------------------------------------
 ! adjust unit
 
-      akf01 = akf01 * 1.d-3
-      akf02 = akf02 * 1.d-3
-      akf03 = akf03 * 1.d-3
-      akf04 = akf04 * 1.d-3
-!      akf05 = akf05 * 1.d-3
-      akf06 = akf06 * 1.d-3
-      akf07 = akf07 * 1.d-3
-      akf08 = akf08 * 1.d-3
-      akf09 = akf09 * 1.d-3
-      akf10 = akf10 * 1.d-3
-      akf11 = akf11 * 1.d-3
-      akf12 = akf12 * 1.d-3
-      akf13 = akf13 * 1.d-3
-      akf14 = akf14 * 1.d-3
-      akf15 = akf15 * 1.d-3
-      akf16 = akf16 * 1.d-3
-      akf17 = akf17 * 1.d-3
-      akf18 = akf18 * 1.d-3
-      akf19 = akf19 * 1.d-3
-      akf20 = akf20 * 1.d-3
-      akf21 = akf21 * 1.d-3
-      akf22 = akf22 * 1.d-3
-      akf23 = akf23 * 1.d-3
-      akf24 = akf24 * 1.d-6
-      akf25 = akf25 * 1.d-6
-
-      akb01 = akb01 * 1.d-3
-!      akb02 = akb02 * 1.d-3
-!      akb03 = akb03 * 1.d-3
-!      akb04 = akb04 * 1.d-3
-      akb05 = akb05 * 1.d-3
-      akb06 = akb06 * 1.d-3
-      akb07 = akb07 * 1.d-3
-      akb08 = akb08 * 1.d-3
-      akb09 = akb09 * 1.d-6
-      akb10 = akb10 * 1.d-6
-      akb11 = akb11 * 1.d-3
-      akb12 = akb12 * 1.d-3
-      akb13 = akb13 * 1.d-3
-      akb14 = akb14 * 1.d-3
-      akb15 = akb15 * 1.d-3
-      akb16 = akb16 * 1.d-3
-      akb17 = akb17 * 1.d-3
-      akb18 = akb18 * 1.d-3
-      akb19 = akb19 * 1.d-3
-      akb20 = akb20 * 1.d-3
-      akb21 = akb21 * 1.d-6
-      akb22 = akb22 * 1.d-6
-      akb23 = akb23 * 1.d-6
-      akb24 = akb24 * 1.d-3
-      akb25 = akb25 * 1.d-3
+      akf(1:ler) = akf(1:ler) * autf(1:ler)
+      akb(1:ler) = akb(1:ler) * autb(1:ler)
 
 !-----------------------------------------------------------------------
+!   make kf[ ][ ] : reaction rate constant * mole density
 
-      ah2   = adns(1)*dmlr(1)
-!      ao2   = dflw(j,k,l2)/dml(2)
-!      ah    = dflw(j,k,l3)/dml(3)
-!      ao    = dflw(j,k,l4)/dml(4)
-!      aoh   = dflw(j,k,l5)/dml(5)
-!      ah2o  = dflw(j,k,l6)/dml(6)
-!      aho2  = dflw(j,k,l7)/dml(7)
-!      ah2o2 = dflw(j,k,l8)/dml(8)
-!      an2   = dflw(j,k,l9)/dml(9)
+      akfc(1 ) = akf(1 ) * ax(3) * ax(2)
+      akfc(2 ) = akf(2 ) * ax(3) * ax(2)
+      akfc(3 ) = akf(3 ) * ax(3) * ax(2)
+      akfc(4 ) = akf(4 ) * ax(3) * ax(2)
+      akfc(5 ) = akf(5 ) * ax(8)
+      akfc(6 ) = akf(6 ) * ax(5) * ax(8)
+      akfc(7 ) = akf(7 ) * ax(5) * ax(8)
+      akfc(8 ) = akfc(6) + akfc(7)                 !06a+06b
+      akfc(9 ) = akf(8 ) * ax(5) * ax(7)
+      akfc(10) = akf(9 ) * ax(7) * ax(7)
+      akfc(11) = akf(10) * ax(7) * ax(7)
+      akfc(12) = akfc(10) + akfc(11)               !08a+08b
+      akfc(13) = akf(11) * ax(6)          * am09
+      akfc(14) = akf(12) * ax(6)          * ax(6)
+      akfc(15) = akf(13) * ax(5) * ax(5)
+      akfc(16) = akf(14) * ax(4) * ax(1)
+      akfc(17) = akf(15) * ax(4) * ax(1)
+      akfc(18) = akfc(16) + akfc(17)               !12a+12b
+      akfc(19) = akf(16) * ax(1) * ax(5)
+      akfc(20) = akf(17) * ax(3) * ax(7)
+      akfc(21) = akf(18) * ax(3) * ax(7)
+      akfc(22) = akf(19) * ax(3) * ax(7)
+      akfc(23) = akf(20) * ax(4) * ax(7)
+      akfc(24) = akf(21) * ax(8) * ax(3)
+      akfc(25) = akf(22) * ax(8) * ax(3)
+      akfc(26) = akf(23) * ax(8) * ax(4)
+      akfc(27) = akf(24) * ax(1)         * am21
+      akfc(28) = akf(25) * ax(1)         * ax(1)
+      akfc(29) = akf(26) * ax(1)         * am23
+      akfc(30) = akf(27) * ax(4) * ax(4) * am24
+      akfc(31) = akf(28) * ax(4) * ax(3) * am25
 
-!    make  kf[ ][ ] : rection rate constant * mole density
 
-      akfc01 = akf01 * ah    * ao2
-      akfc02 = akf02 * ah    * ao2
-      akfc03 = akf03 * ah    * ao2
-      akfc04 = akf04 * ah    * ao2
-      akfc05 = akf05 * ah2o2
-      akfc06 = akf06 * aoh   * ah2o2
-      akfc07 = akf07 * aoh   * aho2
-      akfc08 = akf08 * aho2  * aho2
-      akfc09 = akf09 * ah2o          * am09
-      akfc10 = akf10 * ah2o          * ah2o
-      akfc11 = akf11 * aoh   * aoh
-      akfc12 = akf12 * ao    * ah2
-      akfc13 = akf13 * ah2   * aoh
-      akfc14 = akf14 * ah    * aho2
-      akfc15 = akf15 * ah    * aho2
-      akfc16 = akf16 * ah    * aho2
-      akfc17 = akf17 * ao    * aho2
-      akfc18 = akf18 * ah2o2 * ah
-      akfc19 = akf19 * ah2o2 * ah
-      akfc20 = akf20 * ah2o2 * ao
-      akfc21 = akf21 * ah2           * am21
-      akfc22 = akf22 * ah2           * ah2
-      akfc23 = akf23 * ah2           * am23
-      akfc24 = akf24 * ao    * ao    * am24
-      akfc25 = akf25 * ao    * ah    * am25
+!     make dkf/dT*[ ][ ]
+      ! adf :: 1/kf*dkf/dT
+      adf(1    ) = (ant(1     ) - ae(1     )) * atmpr
+      adf(2    ) = (ant(2     ) - ae(2     )) * atmpr
+      adf(3    ) = (ant(4     ) - ae(4     )) * atmpr
+      adf(4    ) = (ant(6     ) - ae(6     )) * atmpr
+      adf(5    ) = (ant(8     ) - ae(8     )) * atmpr
+      adf(6:ler) = (ant(10:lnr) - ae(10:lnr)) * atmpr
 
-!    make kb[ ][ ] : rection rate constant * mole density
+      add02  = (ant(3) - ant(2) +  ae(3)- ae(2)) * atmpr
+      add03  = (ant(5) - ant(4) +  ae(5)- ae(4)) * atmpr
+      add04  = (ant(7) - ant(6) +  ae(7)- ae(6)) * atmpr
+      add05  = (ae(9) - ae(8)) * atmpr
 
-      akbc01 = akb01 * aoh   * ao
-      akbc02 = akb02 * aho2
-      akbc03 = akb03 * aho2
-      akbc04 = akb04 * aho2
-      akbc05 = akb05 * aoh   * aoh
-      akbc06 = akb06 * ah2o  * aho2
-      akbc07 = akb07 * ah2o  * ao2
-      akbc08 = akb08 * ah2o2 * ao2
-      akbc09 = akb09 * ah    * aoh   * am09
-      akbc10 = akb10 * aoh   * ah    * ah2o
-      akbc11 = akb11 * ah2o  * ao
-      akbc12 = akb12 * ah    * aoh
-      akbc13 = akb13 * ah2o  * ah
-      akbc14 = akb14 * aoh   * aoh
-      akbc15 = akb15 * ah2o  * ao
-      akbc16 = akb16 * ah2   * ao2
-      akbc17 = akb17 * aoh   * ao2
-      akbc18 = akb18 * aho2  * ah2
-      akbc19 = akb19 * ah2o  * aoh
-      akbc20 = akb20 * aoh   * aho2
-      akbc21 = akb21 * ah    * ah    * am21
-      akbc22 = akb22 * ah    * ah    * ah2
-      akbc23 = akb23 * ah    * ah    * am23
-      akbc24 = akb24 * ao2           * am24
-      akbc25 = akb25 * aoh           * am25
+      ! about pressure dependent reaction
+      adfg2  = 1.d0/(1.d0 + atrb2)/(1.d0 + atrb2)
+      adfg3  = 1.d0/(1.d0 + atrb3)/(1.d0 + atrb3)
+      adfg4  = 1.d0/(1.d0 + atrb4)/(1.d0 + atrb4)
 
-!    reaction rate of each elementary reaction
-!    kf[ ][ ] - kb[ ][ ]
+      atrr2  = -2.d0*atrf8*atra2*adfg2*atrn8*adlp2*adlp2
+      atrr3  = -2.d0*atrf7*atra3*adfg3*atrn7*adlp3*adlp3
+      atrr4  = -2.d0*atrf7*atra4*adfg4*atrn7*adlp4*adlp4
 
-      ar01 = akfc01 - akbc01
-      ar02 = akfc02 - akbc02
-      ar03 = akfc03 - akbc03
-      ar04 = akfc04 - akbc04
-      ar05 = akfc05 - akbc05
-      ar06 = akfc06 - akbc06
-      ar07 = akfc07 - akbc07
-      ar08 = akfc08 - akbc08
-      ar09 = akfc09 - akbc09
-      ar10 = akfc10 - akbc10
-      ar11 = akfc11 - akbc11
-      ar12 = akfc12 - akbc12
-      ar13 = akfc13 - akbc13
-      ar14 = akfc14 - akbc14
-      ar15 = akfc15 - akbc15
-      ar16 = akfc16 - akbc16
-      ar17 = akfc17 - akbc17
-      ar18 = akfc18 - akbc18
-      ar19 = akfc19 - akbc19
-      ar20 = akfc20 - akbc20
-      ar21 = akfc21 - akbc21
-      ar22 = akfc22 - akbc22
-      ar23 = akfc23 - akbc23
-      ar24 = akfc24 - akbc24
-      ar25 = akfc25 - akbc25
+      adf(2)  = adf(2) + (adpi2 + atrr2)*add02
+      adf(3)  = adf(3) + (adpi3 + atrr3)*add03
+      adf(4)  = adf(4) + (adpi4 + atrr4)*add04
+      adf(5)  = adf(5) + adpi5*add05
+
+      ! akft :: adf*kf[][] = dkf/dT*[][]
+      akft(1 :5 ) = adf(1 :5 ) * akfc(1 :5 )
+      akft(6    ) = adf(6    ) * akfc(6    ) + adf(7 ) * akfc(7 )
+      akft(7    ) = adf(8    ) * akfc(9    )
+      akft(8    ) = adf(9    ) * akfc(10   ) + adf(10) * akfc(11)
+      akft(9:11 ) = adf(11:13) * akfc(13:15)
+      akft(12   ) = adf(14   ) * akfc(16   ) + adf(15) * akfc(17)
+      akft(13:25) = adf(16:28) * akfc(19:31)
+
+
+!     make dkf/dri*[][]
+
+      akfr2      = (adpi2 + atrr2/(atrp2  + aemn)) * (adnsr(6 ) + aemn) * akbc(2)
+      akfr3      = (adpi3 + atrr3/(atrp3  + aemn)) * (adnsr(2 ) + aemn) * akbc(3)
+      akfr4(1  ) = (adpi4 + atrr4*(atrp4r + aemn)) * (atrp4r    + aemn) * akbc(4) * atrpr4(1  )
+      akfr4(2  ) = 0.d0
+      akfr4(3:5) = (adpi4 + atrr4*(atrp4r + aemn)) * (atrp4r    + aemn) * akbc(4) * atrpr4(3:5)
+      akfr4(6  ) = 0.d0
+      akfr4(7:9) = (adpi4 + atrr4*(atrp4r + aemn)) * (atrp4r    + aemn) * akbc(4) * atrpr4(7:9)
+      akfr5(1:9) = adpi5 * (atrp5r + aemn) * akbc(5) * atrpr5(1:9)
+
+!     make kb[ ][ ]
+
+      akbc(1 ) = akb(1 ) * ax(5) * ax(4)
+      akbc(2 ) = akb(2 ) * ax(7)
+      akbc(3 ) = akb(3 ) * ax(7)
+      akbc(4 ) = akb(4 ) * ax(7)
+      akbc(5 ) = akb(5 ) * ax(5) * ax(5)
+      akbc(6 ) = akb(6 ) * ax(6) * ax(7)
+      akbc(7 ) = akb(7 ) * ax(6) * ax(7)
+      akbc(8 ) = akbc(6) + akbc(7)
+      akbc(9 ) = akb(8 ) * ax(6) * ax(2)
+      akbc(10) = akb(9 ) * ax(2) * ax(8)
+      akbc(11) = akb(10) * ax(2) * ax(8)
+      akbc(12) = akbc(10) + akbc(11)
+      akbc(13) = akb(11) * ax(3) * ax(5) * am09
+      akbc(14) = akb(12) * ax(5) * ax(3) * ax(6)
+      akbc(15) = akb(13) * ax(6) * ax(4)
+      akbc(16) = akb(14) * ax(3) * ax(5)
+      akbc(17) = akb(15) * ax(3) * ax(5)
+      akbc(18) = akbc(16) + akbc(17)
+      akbc(19) = akb(16) * ax(6) * ax(3)
+      akbc(20) = akb(17) * ax(5) * ax(5)
+      akbc(21) = akb(18) * ax(6) * ax(4)
+      akbc(22) = akb(19) * ax(1) * ax(2)
+      akbc(23) = akb(20) * ax(5) * ax(2)
+      akbc(24) = akb(21) * ax(7) * ax(1)
+      akbc(25) = akb(22) * ax(6) * ax(5)
+      akbc(26) = akb(23) * ax(5) * ax(7)
+      akbc(27) = akb(24) * ax(3) * ax(3) * am21
+      akbc(28) = akb(25) * ax(3) * ax(3) * ax(1)
+      akbc(29) = akb(26) * ax(3) * ax(3) * am23
+      akbc(30) = akb(27) * ax(2)         * am24
+      akbc(31) = akb(28) * ax(5)         * am25
+
+
+!     make dkb/dT*[ ][ ]
+
+      adb(1 ) = adf(1 ) - (ahh(1 )        )*atmpr
+      adb(2 ) = adf(2 ) - (ahh(2 ) + 1.0d0)*atmpr
+      adb(3 ) = adf(3 ) - (ahh(3 ) + 1.0d0)*atmpr
+      adb(4 ) = adf(4 ) - (ahh(4 ) + 1.0d0)*atmpr
+      adb(5 ) = adf(5 ) - (ahh(5 ) - 1.0d0)*atmpr
+      adb(6 ) = adf(6 ) - (ahh(6 )        )*atmpr   !06a
+      adb(7 ) = adf(7 ) - (ahh(6 )        )*atmpr   !06b
+      adb(8 ) = adf(8 ) - (ahh(7 )        )*atmpr
+      adb(9 ) = adf(9 ) - (ahh(8 )        )*atmpr   !08a
+      adb(10) = adf(10) - (ahh(8 )        )*atmpr   !08b
+      adb(11) = adf(11) - (ahh(9 ) - 1.0d0)*atmpr
+      adb(12) = adf(12) - (ahh(10) - 1.0d0)*atmpr
+      adb(13) = adf(13) - (ahh(11)        )*atmpr
+      adb(14) = adf(14) - (ahh(12)        )*atmpr   !12a
+      adb(15) = adf(15) - (ahh(12)        )*atmpr   !12b
+      adb(16) = adf(16) - (ahh(13)        )*atmpr
+      adb(17) = adf(17) - (ahh(14)        )*atmpr
+      adb(18) = adf(18) - (ahh(15)        )*atmpr
+      adb(19) = adf(19) - (ahh(16)        )*atmpr
+      adb(20) = adf(20) - (ahh(17)        )*atmpr
+      adb(21) = adf(21) - (ahh(18)        )*atmpr
+      adb(22) = adf(22) - (ahh(19)        )*atmpr
+      adb(23) = adf(23) - (ahh(20)        )*atmpr
+      adb(24) = adf(24) - (ahh(21) - 1.0d0)*atmpr
+      adb(25) = adf(25) - (ahh(22) - 1.0d0)*atmpr
+      adb(26) = adf(26) - (ahh(23) - 1.0d0)*atmpr
+      adb(27) = adf(27) - (ahh(24) + 1.0d0)*atmpr
+      adb(28) = adf(28) - (ahh(25) + 1.0d0)*atmpr
+
+      akbt(1 :5 ) = adb(1 :5 ) * akbc(1 :5 )
+      akbt(6    ) = adb(6    ) * akbc(6    ) + adb(7 ) * akbc(7 )
+      akbt(7    ) = adb(8    ) * akbc(9    )
+      akbt(8    ) = adb(9    ) * akbc(10   ) + adb(10) * akbc(11)
+      akbt(9:11 ) = adb(11:13) * akbc(13:15)
+      akbt(12   ) = adb(14   ) * akbc(16   ) + adb(15) * akbc(17)
+      akbt(13:25) = adb(16:28) * akbc(19:31)
+
+
+!     make dkb/dri*[][]
+
+      akbr2      = (adpi2 + atrr2/(atrp2  + aemn)) * (adnsr(6 ) + aemn) * akbc(2)
+      akbr3      = (adpi3 + atrr3/(atrp3  + aemn)) * (adnsr(2 ) + aemn) * akbc(3)
+      akbr4(1  ) = (adpi4 + atrr4*(atrp4r + aemn)) * (atrp4r    + aemn) * akbc(4) * atrpr4(1  )
+      akbr4(2  ) = 0.d0
+      akbr4(3:5) = (adpi4 + atrr4*(atrp4r + aemn)) * (atrp4r    + aemn) * akbc(4) * atrpr4(3:5)
+      akbr4(6  ) = 0.d0
+      akbr4(7:9) = (adpi4 + atrr4*(atrp4r + aemn)) * (atrp4r    + aemn) * akbc(4) * atrpr4(7:9)
+      akbr5(1:9) = adpi5 * (atrp5r + aemn) * akbc(5) * atrpr5(1:9)
+
+
+!     re-contaning akfc and akbc
+
+      akfc(6 :7 ) = akfc(8 :9 )
+      akfc(8 :11) = akfc(12:15)
+      akfc(12:25) = akfc(18:31)
+
+      akbc(6 :7 ) = akbc(8 :9 )
+      akbc(8 :11) = akbc(12:15)
+      akbc(12:25) = akbc(18:31)
+
+
+!     reaction rate of each elementary reaction
+!     kf[ }[ ] - kb[ ][ ]
+
+      ars(1:len) = akfc(1:len) - akbc(1:len)
+
 
 !    reaction rate of each species
 
-      awh2   = dml(1) * (-ar12 -ar13 +ar16 +ar18 -ar21 -ar22 -ar23)
-      awo2   = dml(2) * (-ar01 -ar02 -ar03 -ar04 +ar07 +ar08 +ar16            &
-  &                      +ar17 +ar24)
-      awh    = dml(3) * (-ar01 -ar02 -ar03 -ar04 +ar09 +ar10 +ar12            &
-  &                      +ar13 -ar14 -ar15 -ar16 -ar18 -ar19 +ar21            &
-  &                      +ar21 +ar22 +ar22 +ar23 +ar23 -ar25)
-      awo    = dml(4) * (+ar01 +ar11 -ar12 +ar15 -ar17 -ar20 -ar24            &
-  &                      -ar24 -ar25)
-      awoh   = dml(5) * (+ar01 +ar05 +ar05 -ar06 -ar07 +ar09 +ar10            &
-  &                      -ar11 -ar11 +ar12 -ar13 +ar14 +ar14 +ar17            &
-  &                      +ar19 +ar20 +ar25)
-      awh2o  = dml(6) * (+ar06 +ar07 -ar09 -ar10 +ar11 +ar13 +ar15            &
-  &                      +ar19)
-      awho2  = dml(7) * (+ar02 +ar03 +ar04 +ar06 -ar07 -ar08 -ar08            &
-  &                      -ar14 -ar15 -ar16 -ar17 +ar18 +ar20)
-      awh2o2 = dml(8) * (-ar05 -ar06 +ar08 -ar18 -ar19 -ar20)
-
-!----------------------------------------------------------------------
-!    MTS method
-
-!    make reaction time scale
-      ath2  = adns(1)*1.d-3*aflgm1/abs(awh2+aeps)                             &
-  &         + 1.d0-aflgm1
-      ato2  = adns(2)*1.d-3*aflgm2/abs(awo2+aeps)                             &
-  &         + 1.d0-aflgm2
-      ath   = adns(3)*1.d-3*aflgm3/abs(awh+aeps)                              &
-  &         + 1.d0-aflgm3
-      ato   = adns(4)*1.d-3*aflgm4/abs(awo+aeps)                              &
-  &         + 1.d0-aflgm4
-      atoh  = adns(5)*1.d-3*aflgm5/abs(awoh+aeps)                             &
-  &         + 1.d0-aflgm5
-      ath2o = adns(6)*1.d-3*aflgm6/abs(awh2o+aeps)                            &
-  &         + 1.d0-aflgm6
-      atho2 = adns(7)*1.d-3*aflgm7/abs(awho2+aeps)                            &
-  &         + 1.d0-aflgm7
-      ath2o2= adns(8)*1.d-3*aflgm8/abs(awh2o2+aeps)                           &
-  &         + 1.d0-aflgm8
-
-!    ignore uninvolved chemical species
-      afg   = a05 + sign(a05, ath2-atmn)
-      ath2  = ath2  *afg + 1.d0-afg
-      afg   = a05 + sign(a05, ato2-atmn)
-      ato2  = ato2  *afg + 1.d0-afg
-      afg   = a05 + sign(a05, ath -atmn)
-      ath   = ath   *afg + 1.d0-afg
-      afg   = a05 + sign(a05, ato -atmn)
-      ato   = ato   *afg + 1.d0-afg
-      afg   = a05 + sign(a05, atoh-atmn)
-      atoh  = atoh  *afg + 1.d0-afg
-      afg   = a05 + sign(a05, ath2o-atmn)
-      ath2o = ath2o *afg + 1.d0-afg
-      afg   = a05 + sign(a05, atho2-atmn)
-      atho2 = atho2 *afg + 1.d0-afg
-      afg   = a05 + sign(a05, ath2o2-atmn)
-      ath2o2= ath2o2*afg + 1.d0-afg
+      aw(1) = dml(1) * (-ars(12) -ars(13) +ars(16) +ars(18) -ars(21)          &
+      &                 -ars(22) -ars(23))
+      aw(2) = dml(2) * (-ars(1 ) -ars(2 ) -ars(3 ) -ars(4 ) +ars(7 )          &
+      &                 +ars(8 ) +ars(16) +ars(17) +ars(24))
+      aw(3) = dml(3) * (-ars(1 ) -ars(2 ) -ars(3 ) -ars(4 ) +ars(9 )          &
+      &                 +ars(10) +ars(12) +ars(13) -ars(14) -ars(15)          &
+      &                 -ars(16) -ars(18) +ars(19) +ars(21) +ars(21)          &
+      &                 +ars(22) +ars(22) +ars(23) +ars(23) -ars(25))
+      aw(4) = dml(4) * (+ars(1 ) +ars(11) -ars(12) +ars(15) -ars(17)          &
+      &                 -ars(20) -ars(24) -ars(24) -ars(25))
+      aw(5) = dml(5) * (+ars(1 ) +ars(5 ) +ars(5 ) -ars(6 ) -ars(7 )          &
+      &                 +ars(9 ) +ars(10) -ars(11) -ars(11) +ars(12)          &
+      &                 -ars(13) +ars(14) +ars(14) +ars(17) +ars(19)          &
+      &                 +ars(20) +ars(25))
+      aw(6) = dml(6) * (+ars(6 ) +ars(7 ) -ars(9 ) -ars(10) +ars(11)          &
+      &                 +ars(13) +ars(15) +ars(19))
+      aw(7) = dml(7) * (+ars(2 ) +ars(3 ) +ars(4 ) +ars(6 ) -ars(7 )          &
+      &                 -ars(8 ) -ars(8 ) -ars(14) -ars(15) -ars(16)          &
+      &                 -ars(17) +ars(18) +ars(20))
+      aw(8) = dml(8) * (-ars(5 ) -ars(6 ) +ars(8 ) -ars(18) -ars(19)          &
+      &                 -ars(20))
 
 
-!    make minimum reaction time scale
-      adlt1 = 0.8d0*min(ath2,ato2,ath,ato,atoh,ath2o,atho2,ath2o2)
-      adlt2 = max(adlt1,atmn)
-      atmx = delt - atime
-      adlt = min(adlt2,atmx)
+!     source term of H2
 
-      awh2  = adlt*awh2
-      awo2  = adlt*awo2
-      awh   = adlt*awh
-      awo   = adlt*awo
-      awoh  = adlt*awoh
-      awh2o = adlt*awh2o
-      awho2 = adlt*awho2
-      awh2o2= adlt*awh2o2
+!      drst(j,k) = aw(1)
 
-      adns(1) = adns(1) + aflgm1*awh2
-      adns(2) = adns(2) + aflgm2*awo2
-      adns(3) = adns(3) + aflgm3*awh
-      adns(4) = adns(4) + aflgm4*awo
-      adns(5) = adns(5) + aflgm5*awoh
-      adns(6) = adns(6) + aflgm6*awh2o
-      adns(7) = adns(7) + aflgm7*awho2
-      adns(8) = adns(8) + aflgm8*awh2o2
+      arhs(1:8) = delt*aw(1:8)
 
-!---------------------------------------------------------------------
-!    revision
+!-----------------------------------------------------------------------
+! make jacobian
+!-----------------------------------------------------------------------
 
-      asgm = 0.0d0
+! dT/drj
 
-      adns(1:lsp-1) = max(0.d0,adns(1:lsp-1)) ! mass correction
+    druo = sum(adns(1:lsp)*dmlru(1:lsp))*ar
+    aruo = 1/druo
+    awk1 = dcpo/druo
+    awk2 = 1.d0 / (1.d0 - awk1)
+    awk3 = awk1 * dru * atmp
+    dppd(1:8) = (ahti(1:8) - awk3*dmlr(1:8)) * awk2
+    arr  = aruo*arho
+    adtd(1:8) = (dppd(1:8)-dru*atmp*dmlr(1:8))*arr
 
-      asgm = sum(adns(1:lsp-1))
+! elementary reaction concerning with [M], kf[][][M]/[M]
 
-      asgm = arho / asgm
+    arf09 = akf(11) * ax(6)
+    arf10 = akf(12) * ax(6)
+    arf21 = akf(24) * ax(1)
+    arf22 = akf(25) * ax(1)
+    arf23 = akf(26) * ax(1)
+    arf24 = akf(27) * ax(4) * ax(4)
+    arf25 = akf(28) * ax(3) * ax(4)
 
-      adns(1:lsp-1) = adns(1:lsp-1) * asgm
+    arb09 = akb(11) * ax(3) * ax(5)
+    arb10 = akb(12) * ax(3) * ax(5)
+    arb21 = akb(24) * ax(3) * ax(3)
+    arb22 = akb(25) * ax(3) * ax(3)
+    arb23 = akb(26) * ax(3) * ax(3)
+    arb24 = akb(27) * ax(2)
+    arb25 = akb(28) * ax(5)
 
+    acn = 0.5d0*delt
+
+
+!-----------
+!   dw1   - H2
+!-----------
+
+    ! H2 coms or prod rate of third-body reactions in the reactions including H2 (only No.7 reaction)
+    admd(1) =                arf22
+    admd(2) =                        arb23
+    admd(3) = arb21
+    admd(4) = arb21
+    admd(5) = arb21
+    admd(6) = arb21*14.4d0
+    admd(7) = arb21
+    admd(8) = arb21
+    admd(9) =                        arb23
+
+    ! each comsumption rate in the reactions including H2
+    akc(1) = akfc(12) + akfc(13) + akbc(16) + akbc(18) + akfc(21) + akfc(22)  &
+    &      + akfc(23)
+    akc(2) = 0.d0
+    akc(3) = akbc(12) + akbc(13) + akfc(16) + akfc(18) + akbc(21) + akbc(21)  &
+    &      + akbc(22) + akbc(22) + akbc(23) + akbc(23)
+    akc(4) = 0.d0
+    akc(5) = akbc(12)
+    akc(6) = akbc(13)
+    akc(7) = akfc(16)
+    akc(8) = akfc(18)
+    akc(9) = 0.d0
+
+    ! H2 comsumption and production (asktw"c" and "p")
+    asktwc = akft(12) + akft(13) + akbt(16) + akbt(18) + akft(21)             &
+    &      + akft(22) + akft(23)
+    asktwp = akbt(12) + akbt(13) + akft(16) + akft(18) + akbt(21)             &
+    &      + akbt(22) + akbt(23)
+
+    ! tau^-1 = max(dwj/drj,dwj/drk)  -inverse of characteristic time
+    aj(1,1    ) = admd(1    )*dmlr(1    ) + akc(1    )*adnsr(1    ) + adtd(1    )*asktwc
+    aj(1,2:lsp) = admd(2:lsp)*dmlr(2:lsp) + akc(2:lsp)*adnsr(2:lsp) + adtd(2:lsp)*asktwp
+
+
+!-----------
+!   dw2   - O2
+!-----------
+
+    admd(1) = arf24*2.5d0  ! [M] = H2
+    admd(2) = arb24        ! [M] = O2
+    admd(3) = arf24        ! [M] = H
+    admd(4) = arf24        ! [M] = O
+    admd(5) = arf24        ! [M] = OH
+    admd(6) = arf24*12.0d0 ! [M] = H2O
+    admd(7) = arf24        ! [M] = HO2
+    admd(8) = arf24        ! [M] = H2O2
+    admd(9) = arf24        ! [M] = N2
+
+    akc(1) = 0.d0
+    akc(2) = akfc(1 ) + akfc(2 ) + akfc(3 ) + akfc(4 ) + akbc(7 )           &
+    &      + akbc(8 ) + akbc(16) + akbc(17) + akbc(24)
+    akc(3) = akfc(16)
+    akc(4) = akbc(1 ) + akfc(17) + akfc(24) + akfc(24)
+    akc(5) = akbc(1 ) + akfc(7 )
+    akc(6) = 0.d0
+    akc(7) = akbc(2 ) + akbc(3 ) + akbc(4 ) + akfc(7 ) + akfc(8 )           &
+    &      + akfc(8 ) + akfc(16) + akfc(17)
+    akc(8) = 0.d0
+    akc(9) = 0.d0
+
+    asktwc = akft(1 ) + akft(2 ) + akft(3 ) + akft(4 ) + akbt(7 )           &
+    &      + akbt(8 ) + akbt(16) + akbt(17) + akbt(24)
+    asktwp = akbt(1 ) + akbt(2 ) + akbt(3 ) + akbt(4 ) + akft(7 )           &
+    &      + akft(8 ) + akft(16) + akft(17) + akft(24)
+
+    askrwc    = akfr3
+    askrwp(1) = akbr4(1)
+    askrwp(2) = 0.d0
+    askrwp(3) = akbr4(3)
+    askrwp(4) = akbr4(4)
+    askrwp(5) = akbr4(5)
+    askrwp(6) = akbr2
+    askrwp(7) = akbr4(7)
+    askrwp(8) = akbr4(8)
+    askrwp(9) = akbr4(9)
+
+    aj(2,1    ) = admd(1    )*dmlr(1    ) + akc(1    )*adnsr(1    ) + adtd(1    )*asktwp + askrwp(1    )
+    aj(2,2    ) = admd(2    )*dmlr(2    ) + akc(2    )*adnsr(2    ) + adtd(2    )*asktwc + askrwc
+    aj(2,3:lsp) = admd(3:lsp)*dmlr(3:lsp) + akc(3:lsp)*adnsr(3:lsp) + adtd(3:lsp)*asktwp + askrwp(3:lsp)
+
+!----------
+!   dw3  -  H
+!-----------
+
+    admd(1) = arf09*3.0d0 + arf22 + arf22 + arb25*2.5d0
+    admd(2) = arf09*1.5d0 + arf23 + arf23 + arb25
+    admd(3) = arb09 + arb21 + arb21 + arf25
+    admd(4) = arf09 + arf21 + arf21 + arb25
+    admd(5) = arf09 + arf21 + arf21 + arb25
+    admd(6) = arf10 + arf21*14.4d0 + arf21*14.4d0 + arb25*12.d0
+    admd(7) = arf09 + arf21 + arf21 + arb25
+    admd(8) = arf09 + arf21 + arf21 + arb25
+    admd(9) = arf09*2.0d0 + arf23 + arf23 + arb25
+
+    akc(1) = akfc(12) + akfc(13) + akbc(16) + akbc(18) + akfc(21) +  akfc(21) &
+    &      + akfc(22) + akfc(22) + akfc(23) + akfc(23)
+    akc(2) = akbc(16)
+    akc(3) = akfc(1 ) + akfc(2 ) + akfc(3 ) + akfc(4 ) + akbc(9 ) + akbc(10)  &
+    &      + akbc(12) + akbc(13) + akfc(14) + akfc(15) + akfc(16) + akfc(18)  &
+    &      + akfc(19) + 4.d0 * akbc(21) + 4.d0 * akbc(22) + 4.d0 * akbc(23)   &
+    &      + akfc(25)
+    akc(4) = akbc(1 ) + akfc(12) + akbc(15)
+    akc(5) = akbc(1 ) + akfc(13) + akbc(14) + akbc(14) + akbc(19) + akbc(25)
+    akc(6) = akfc(9 ) + akfc(10) + akbc(15) + akbc(19)
+    akc(7) = akbc(2 ) + akbc(3 ) + akbc(4 ) + akbc(18)
+    akc(8) = 0.d0
+    akc(9) = 0.d0
+
+    asktwc = akft(1 ) + akft(2 ) + akft(3 ) + akft(4 ) + akbt(9 ) + akbt(10)  &
+    &      + akbt(12) + akbt(13) + akft(14) + akft(15) + akft(16) + akft(18)  &
+    &      + akft(19) + akbt(21) + akbt(21) + akbt(22) + akbt(22) + akbt(23)  &
+    &      + akft(25)
+    asktwp = akbt(1 ) + akbt(2 ) + akbt(3 ) + akbt(4 ) + akft(9 ) + akft(10)  &
+    &      + akft(12) + akft(13) + akbt(14) + akbt(15) + akbt(16) + akbt(18)  &
+    &      + akbt(19) + akft(21) + akft(21) + akft(22) + akft(22) + akft(23)  &
+    &      + akbt(25)
+
+    askrwc    = akfr4(3)
+    askrwp(1) = akbr4(1)
+    askrwp(2) = akbr3
+    askrwp(3) = 0.d0
+    askrwp(4) = akbr4(4)
+    askrwp(5) = akbr4(5)
+    askrwp(6) = akbr2
+    askrwp(7) = akbr4(7)
+    askrwp(8) = akbr4(8)
+    askrwp(9) = akbr4(9)
+
+    aj(3,1:2  ) = admd(1:2  )*dmlr(1:2  ) + akc(1:2  )*adnsr(1:2  ) + adtd(1:2  )*asktwp + askrwp(1:2  )
+    aj(3,3    ) = admd(3    )*dmlr(3    ) + akc(3    )*adnsr(3    ) + adtd(3    )*asktwp + askrwc
+    aj(3,4:lsp) = admd(4:lsp)*dmlr(4:lsp) + akc(4:lsp)*adnsr(4:lsp) + adtd(4:lsp)*asktwc + askrwp(4:lsp)
+
+!-----------
+!   dw4  -  O
+!-----------
+
+    admd(1) = arb24*2.5d0 + arb24*2.5d0 + arb25*2.5d0
+    admd(2) = arb24       + arb24       + arb25
+    admd(3) = arb24       + arb24       + arb25
+    admd(4) = arf24       + arf24       + arf25
+    admd(5) = arb24       + arb24       + arb25
+    admd(6) = arb24*12.d0 + arb24*12.d0 + arb25*12.d0
+    admd(7) = arb24       + arb24       + arb25
+    admd(8) = arb24       + arb24       + arb25
+    admd(9) = arb24       + arb24       + arb25
+
+    akc(1) = 0.d0
+    akc(2) = akfc(1 ) + akbc(17) + akbc(24) + akbc(24)
+    akc(3) = akfc(1 ) + akbc(12) + akfc(15)
+    akc(4) = akbc(1 ) + akbc(11) + akfc(12) + akbc(15) + akfc(17) + akfc(20)  &
+    &      + 4.d0 * akfc(24) + akfc(25)
+    akc(5) = akfc(11) + akfc(11) + akbc(12) + akbc(17) + akbc(20) + akbc(25)
+    akc(6) = 0.d0
+    akc(7) = akfc(15) + akbc(20)
+    akc(8) = 0.d0
+    akc(9) = 0.d0
+
+    asktwc = akbt(1 ) + akbt(11) + akft(12) + akbt(15) + akft(17) + akft(20)  &
+    &      + akft(24) + akft(24) + akft(25)
+    asktwp = akft(1 ) + akft(11) + akbt(12) + akft(15) + akbt(17) + akbt(20)  &
+    &      + akbt(24) + akbt(24) + akbt(25)
+
+    aj(4,1:3  ) = admd(1:3  )*dmlr(1:3  ) + akc(1:3  )*adnsr(1:3  ) + adtd(1:3  )*asktwp
+    aj(4,4    ) = admd(4    )*dmlr(4    ) + akc(4    )*adnsr(4    ) + adtd(4    )*asktwp
+    aj(4,5:lsp) = admd(5:lsp)*dmlr(5:lsp) + akc(5:lsp)*adnsr(5:lsp) + adtd(5:lsp)*asktwp
+
+!-----------
+!   dw5  -  OH
+!-----------
+
+    admd(1) = arf09*3.0d0         + arf25*2.5d0
+    admd(2) = arf09*1.5d0         + arf25
+    admd(3) = arf09               + arf25
+    admd(4) = arf09               + arf25
+    admd(5) = arb09               + arb25
+    admd(6) =               arf10 + arf25*12.0d0
+    admd(7) = arf09               + arf25
+    admd(8) = arf09               + arf25
+    admd(9) = arf09*2.0d0         + arf25
+
+    akc(1) = akfc(12)
+    akc(2) = akfc(1 ) + akbc(7 )
+    akc(3) = akfc(1 ) + akbc(13) + akfc(14) + akfc(14) + akfc(19) + akfc(25)
+    akc(4) = akbc(11) + akbc(11) + akfc(12) + akfc(17) + akfc(20) + akfc(25)
+    akc(5) = akbc(1 ) + 4.d0 * akbc(5 )     + akfc(6 ) + akfc(7 ) + akbc(9 )  &
+    &      + akbc(10) + 4.d0 * akfc(11)     + akbc(12) + akfc(13)             &
+    &      + 4.d0 * akbc(14)     + akbc(17) + akbc(19) + akbc(20) + akbc(25)
+    akc(6) = akbc(6 ) + akbc(7 ) + akfc(9 ) + akfc(10) + akbc(11) + akbc(11)  &
+    &      + akbc(13)
+    akc(7) = akbc(6 ) + akfc(14) + akfc(14) + akfc(17)
+    akc(8) = akfc(5 ) + akfc(5 ) + akfc(19) + akfc(20)
+    akc(9) = 0.0d0
+
+    asktwc = akbt(1 ) + akbt(5 ) + akbt(5 ) + akft(6 ) + akft(7 ) + akbt(9 )  &
+    &      + akbt(10) + akft(11) + akft(11) + akbt(12) + akft(13) + akbt(14)  &
+    &      + akbt(14) + akbt(17) + akbt(19) + akbt(20) + akbt(25)
+    asktwp = akft(1 ) + akft(5 ) + akbt(5 ) + akbt(6 ) + akbt(7 ) + akft(9 )  &
+    &      + akft(10) + akbt(11) + akbt(11) + akft(12) + akbt(13) + akft(14)  &
+    &      + akft(14) + akft(17) + akft(19) + akft(20) + akft(25)
+
+    askrwc    = 2.d0 * akbr5(5)
+    askrwp(1) = 2.d0 * akfr5(1)
+    askrwp(2) = 2.d0 * akfr5(2)
+    askrwp(3) = 2.d0 * akfr5(3)
+    askrwp(4) = 2.d0 * akfr5(4)
+    askrwp(5) = 0.d0
+    askrwp(6) = 2.d0 * akfr5(6)
+    askrwp(7) = 2.d0 * akfr5(7)
+    askrwp(8) = 2.d0 * akfr5(8)
+    askrwp(9) = 2.d0 * akfr5(9)
+
+    aj(5,1:4  ) = admd(1:4  )*dmlr(1:4  ) + akc(1:4  )*adnsr(1:4  ) + adtd(1:4  )*asktwp + askrwp(1:4)
+    aj(5,5    ) = admd(5    )*dmlr(5    ) + akc(5    )*adnsr(5    ) + adtd(5    )*asktwp + askrwc
+    aj(5,6:lsp) = admd(6:lsp)*dmlr(6:lsp) + akc(6:lsp)*adnsr(6:lsp) + adtd(6:lsp)*asktwp + askrwp(6:lsp)
+
+!-----------
+!   dw6  -  H2O
+!-----------
+
+    admd(1) = arb09*3.0d0
+    admd(2) = arb09*1.5d0
+    admd(3) = arb09
+    admd(4) = arb09
+    admd(5) = arb09
+    admd(6) =             + arf10
+    admd(7) = arb09
+    admd(8) = arb09
+    admd(9) = arb09*2.0d0
+
+    akc(1) = akfc(13)
+    akc(2) = 0.d0
+    akc(3) = akbc(9 ) + akbc(10) + akfc(15) + akfc(19)
+    akc(4) = 0.d0
+    akc(5) = akfc(6 ) + akfc(7 ) + akbc(9 ) + akbc(10) + akfc(11) + akfc(11)  &
+    &      + akfc(13)
+    akc(6) = akbc(6 ) + akbc(7 ) + akfc(9 ) + akfc(10) + akbc(11) + akbc(13)  &
+    &      + akbc(15) + akbc(19)
+    akc(7) = akfc(7 ) + akfc(15)
+    akc(8) = akfc(6 ) + akfc(19)
+    akc(9) = 0.0d0
+
+    asktwc = akbt(6 ) + akbt(7 ) + akft(9 ) + akft(10) + akbt(11) + akbt(13)  &
+    &      + akbt(15) + akbt(19)
+    asktwp = akft(6 ) + akft(7 ) + akbt(9 ) + akbt(10) + akft(11) + akft(13)  &
+    &      + akft(15) + akft(19)
+
+    aj(6,1:5  ) = admd(1:5  )*dmlr(1:5  ) + akc(1:5  )*adnsr(1:5  ) + adtd(1:5  )*asktwp
+    aj(6,6    ) = admd(6    )*dmlr(6    ) + akc(6    )*adnsr(6    ) + adtd(6    )*asktwp
+    aj(6,7:lsp) = admd(7:lsp)*dmlr(7:lsp) + akc(7:lsp)*adnsr(7:lsp) + adtd(7:lsp)*asktwp
+
+!-----------
+!   dw7  -  HO2
+!-----------
+
+    admd(1) = 0.d0
+    admd(2) = 0.d0
+    admd(3) = 0.d0
+    admd(4) = 0.d0
+    admd(5) = 0.d0
+    admd(6) = 0.d0
+    admd(7) = 0.d0
+    admd(8) = 0.d0
+    admd(9) = 0.d0
+
+    akc(1) = akbc(16)
+    akc(2) = akfc(2 ) + akfc(3 ) + akfc(4 ) + akbc(7 ) + akbc(8 ) + akbc(8 )  &
+    &      + akbc(16) + akbc(17)
+    akc(3) = akfc(2 ) + akfc(3 ) + akfc(4 ) + akfc(18)
+    akc(4) = akbc(15) + akfc(20)
+    akc(5) = akfc(6 ) + akbc(14) + akbc(14) + akbc(17)
+    akc(6) = akbc(7 ) + akbc(15)
+    akc(7) = akbc(2 ) + akbc(3 ) + akbc(4 ) + akbc(6 ) + akfc(7 )             &
+    &      + 4.d0 * akfc(8 )     + akfc(14) + akfc(15) + akfc(16) + akfc(17)  &
+    &      + akbc(18) + akbc(20)
+    akc(8) = akfc(6 ) + akbc(8 ) + akbc(8 ) + akfc(18) + akfc(20)
+    akc(9) = 0.0d0
+
+    asktwc = akbt(2 ) + akbt(3 ) + akbt(4 ) + akbt(6 ) + akft(7 ) + akft(8 )  &
+    &      + akft(8 ) + akft(14) + akft(15) + akft(16) + akft(17) + akbt(18)  &
+    &      + akbt(20)
+    asktwp = akft(2 ) + akft(3 ) + akft(4 ) + akft(6 ) + akbt(7 ) + akbt(8 )  &
+    &      + akbt(8 ) + akbt(14) + akbt(15) + akbt(16) + akbt(17) + akft(18)  &
+    &      + akft(20)
+
+    askrwc    = akbr4(7)
+    askrwp(1) = akbr4(1)
+    askrwp(2) = akbr2
+    askrwp(3) = akbr4(3)
+    askrwp(4) = akbr4(4)
+    askrwp(5) = akbr4(5)
+    askrwp(6) = akbr2
+    askrwp(7) = 0.d0
+    askrwp(8) = akbr4(8)
+    askrwp(9) = akbr4(9)
+
+    aj(7,1:6  ) = admd(1:6  )*dmlr(1:6  ) + akc(1:6  )*adnsr(1:6  ) + adtd(1:6  )*asktwp + askrwp(1:6  )
+    aj(7,7    ) = admd(7    )*dmlr(7    ) + akc(7    )*adnsr(7    ) + adtd(7    )*asktwp + askrwc
+    aj(7,8:lsp) = admd(8:lsp)*dmlr(8:lsp) + akc(8:lsp)*adnsr(8:lsp) + adtd(8:lsp)*asktwp + askrwp(8:lsp)
+
+!----------------
+!        dw8  -  H2O2
+!----------------
+
+    admd(1) = 0.d0
+    admd(2) = 0.d0
+    admd(3) = 0.d0
+    admd(4) = 0.d0
+    admd(5) = 0.d0
+    admd(6) = 0.d0
+    admd(7) = 0.d0
+    admd(8) = 0.d0
+    admd(9) = 0.d0
+
+    akc(1) = akbc(18)
+    akc(2) = 0.d0
+    akc(3) = 0.d0
+    akc(4) = 0.d0
+    akc(5) = akbc(5 ) + akbc(5 ) + akbc(19) + akbc(20)
+    akc(6) = akbc(6 ) + akbc(19)
+    akc(7) = akbc(6 ) + akfc(8 ) + akfc(8 ) + akbc(18) + akbc(20)
+    akc(8) = akfc(5 ) + akfc(6 ) + akbc(8 ) + akfc(18) + akfc(19) + akfc(20)
+    akc(9) = 0.0d0
+
+    asktwc = akft(5 ) + akft(6 ) + akbt(8 ) + akft(18) + akft(19) + akft(20)
+    asktwp = akbt(5 ) + akbt(6 ) + akft(8 ) + akbt(18) + akbt(19) + akbt(20)
+
+    askrwc    = akfr5(5)
+    askrwp(1) = akbr5(1)
+    askrwp(2) = akbr5(2)
+    askrwp(3) = akbr5(3)
+    askrwp(4) = akbr5(4)
+    askrwp(5) = akbr5(5)
+    askrwp(6) = akbr5(6)
+    askrwp(7) = akbr5(7)
+    askrwp(8) = 0.d0
+    askrwp(9) = akbr5(9)
+
+    aj(8,1:7  ) = admd(1:7  )*dmlr(1:7  ) + akc(1:7  )*adnsr(1:7  ) + adtd(1:7  )*asktwp + askrwp(1:7)
+    aj(8,8    ) = admd(8    )*dmlr(8    ) + akc(8    )*adnsr(8    ) + adtd(8    )*asktwc + askrwc
+    aj(8,9    ) = admd(9    )*dmlr(9    ) + akc(9    )*adnsr(9    ) + adtd(9    )*asktwp + askrwp(9  )
+
+!----------------
+!        dw9  -  N2
+!----------------
+
+    aj(9,1:9) = 0.d0
+
+!--------------------------------------------------
+!   LU decomposition
+
+    do j = 1, lsp
+    do k = 1, lsp
+      u(j,k) = 0.d0
+      l(j,k) = merge(1.d0, 0.d0, j.eq.k)
+    end do
+    end do
+
+    do k = 1, lsp
+      tmp = 1.d0 / aj(k,k)
+      aj(k+1:lsp,k) = aj(k+1,k) * tmp
+      do j = k+1, lsp
+        tmp = aj(k,j)
+        aj(k+1:lsp,j) = aj(k+1:lsp,j) - aj(k+1:lsp,k) * tmp
+      end do
+    end do
+
+    u(1:lsp,1) = aj(1:lsp,1)
+
+    do k = 2, lsp
+      u(k:lsp,k) = aj(k:lsp,k)
+      l(1:lsp-k,k) = aj(1:lsp-k,k)
+    end do
+
+    write(u(:,:))
+    write(j(:,:))
 
 !---------------------------------------------------------------------
 ! update temperature
 
-      afm(1:lsp) = adns(1:lsp)*dmlru(1:lsp)
+    afm(1:lsp) = adns(1:lsp)*dmlru(1:lsp)
 
-      afmt = sum(afm(:))
+    afmt = sum(afm(:))
 
-      at = atmp
+    at = atmp
 
 ! --------------------
 ! newton-rapson method
 ! --------------------
-      do i = 1, itr
+    do i = 1, itr
 
-        itm = 1 + int(a05 + sign(a05,(at - dplt)))
+      itm = 1 + int(a05 + sign(a05,(at - dplt)))
 
-        ab(1) = sum(afm(1:lsp)*dplh(1,1:lsp,itm)) - afmt
-        ab(2) = sum(afm(1:lsp)*dplh(2,1:lsp,itm)) * a12
-        ab(3) = sum(afm(1:lsp)*dplh(3,1:lsp,itm)) * a13
-        ab(4) = sum(afm(1:lsp)*dplh(4,1:lsp,itm)) * a14
-        ab(5) = sum(afm(1:lsp)*dplh(5,1:lsp,itm)) * a15
-        ab(6) = sum(afm(1:lsp)*dplh(6,1:lsp,itm)) + aeng
+      ab(1) = sum(afm(1:lsp)*dplh(1,1:lsp,itm)) - afmt
+      ab(2) = sum(afm(1:lsp)*dplh(2,1:lsp,itm)) * a12
+      ab(3) = sum(afm(1:lsp)*dplh(3,1:lsp,itm)) * a13
+      ab(4) = sum(afm(1:lsp)*dplh(4,1:lsp,itm)) * a14
+      ab(5) = sum(afm(1:lsp)*dplh(5,1:lsp,itm)) * a15
+      ab(6) = sum(afm(1:lsp)*dplh(6,1:lsp,itm)) + aeng
 
-        afdd = 2.d0*ab(2) + at*( 6.d0*ab(3)                                  &
-        &                 + at*(12.d0*ab(4) + at*(20.d0*ab(5))))
-        afd  = ab(1) + at*(2.d0*ab(2) + at*(3.d0*ab(3)                       &
-        &            + at*(4.d0*ab(4) + at*(5.d0*ab(5)))))
-        af   = at*(ab(1) + at*(ab(2) + at*(ab(3) &
-        &    + at*(ab(4) + at*ab(5)))))  + ab(6)
+      afdd = 2.d0*ab(2) + at*( 6.d0*ab(3)                                    &
+      &                 + at*(12.d0*ab(4) + at*(20.d0*ab(5))))
+      afd  = ab(1) + at*(2.d0*ab(2) + at*(3.d0*ab(3)                         &
+      &            + at*(4.d0*ab(4) + at*(5.d0*ab(5)))))
+      af   = at*(ab(1) + at*(ab(2) + at*(ab(3) &
+      &    + at*(ab(4) + at*ab(5)))))  + ab(6)
 
-        addd = afdd*af/afd
+      addd = afdd*af/afd
 
-        adt  = af/(afd-a05*addd)
-!        adt  = af/afd
+      adt  = af/(afd-a05*addd)
+!      adt  = af/afd
 
-        at = at - adt
-        if (abs(adt) < aerr) exit
-
-      end do
-
-      atmp = at
-
-!-----------------------------------------
-! update aflg(i) (, which represents frozen species)
-! -----------------------------------------
-
-    aaa = abs(awh2)-aber
-    abb = abs(awo2)/(adns(2)-awo2+aeps) - arer
-    aflgm2 = a05+ sign(a05,aaa*abb*min(aaa,abb))
-
-    aaa = abs(awh)-aber
-    abb = abs(awh)/(adns(3)-awh+aeps) - arer
-    aflgm3 = a05+ sign(a05,aaa*abb*min(aaa,abb))
-
-    aaa = abs(awo)-aber
-    abb = abs(awo)/(adns(4)-awo+aeps) - arer
-    aflgm4 = a05+ sign(a05,aaa*abb*min(aaa,abb))
-
-    aaa = abs(awoh)-aber
-    abb = abs(awoh)/(adns(5)-awoh+aeps) - arer
-    aflgm5 = a05+ sign(a05,aaa*abb*min(aaa,abb))
-
-    aaa = abs(awh2o)-aber
-    abb = abs(awh2o)/(adns(6)-awh2o+aeps) - arer
-    aflgm6 = a05+ sign(a05,aaa*abb*min(aaa,abb))
-
-    aaa = abs(awho2)-aber
-    abb = abs(awho2)/(adns(7)-awho2+aeps) - arer
-    aflgm7 = a05+ sign(a05,aaa*abb*min(aaa,abb))
-
-    aaa = abs(awh2o2)-aber
-    abb = abs(awh2o2)/(adns(8)-awh2o2+aeps) - arer
-    aflgm8 = a05+ sign(a05,aaa*abb*min(aaa,abb))
-
-!-----------------------------------------------------
-
-    atime = atime + adlt
-
-    if (atime>=delt)exit
+      at = at - adt
+      if (abs(adt) < aerr) exit
 
     end do
+
+    atmp = at
 
     aYi(:) = adns(:)/totaldens
     dtmp = atmp
@@ -1090,11 +1188,12 @@ subroutine imtss(dtmp,dprs,aYi,delt)
     dprs   = totaldens*druo*atmp
     !totaldens = dprs*atmpr/druo
     !totaldens = sum(adns(:))
+    write(6,*) atmp
 
   deallocate(adns,afm,ab)
 
 !-----------------------------------------------------------------------
 
-  end subroutine imtss
+  end subroutine semiimp
 
 !=======================================================================

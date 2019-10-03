@@ -44,9 +44,10 @@ class PhysicsInformedNN:
         #self.lb = X.min(axis=0)
         #self.ub = X.min(axis=0)
 
-
         self.omegai_f, self.totaldens = self.make_omegai(self.N, self.t_f, self.T0_f, self.p0_f, self.Yi0_f)
         self.rhoi0_f  = self.make_rhoi0(self.Yi0_f, self.totaldens)
+
+        self.t_f, self.T0_f, self.p0_f = self.standardization(self.t_f, self.T0_f, self.p0_f)
 
         # Cut N2 mass fraction
         self.Yi0_f = np.delete(self.Yi0_f,-1,axis=1)
@@ -126,11 +127,24 @@ class PhysicsInformedNN:
         #byrefでポインタにして渡す，mtsの実行
         #多次元配列はFortranに渡した際に転置されるので注意
         fn1.imtss_omega_(c.byref(N),delt,dtmp,dprs,aYi,omegai,totaldens)
+        np.savetxt('/share/omegai.csv',omegai)
         return omegai, totaldens
 
     def make_rhoi0(self, Yi0_f, totaldens) :
         rhoi0 = self.Yi0_f * totaldens
         return rhoi0
+
+    def standardization(self, t_f, T0_f, p0_f) :
+        mean_t = np.mean(t_f,axis=0)
+        mean_T0 = np.mean(T0_f,axis=0)
+        mean_p0 = np.mean(p0_f,axis=0)
+        std_t = np.std(t_f,axis=0)
+        std_T0 = np.std(T0_f,axis=0)
+        std_p0 = np.std(p0_f,axis=0)
+        t_f = (t_f - mean_t) / std_t
+        T0_f = (T0_f - mean_T0) / std_T0
+        p0_f = (p0_f - mean_p0) / std_p0
+        return t_f, T0_f, p0_f
 
     def neural_net(self, X, weights, biases):
         num_layers = len(weights) + 1
@@ -262,18 +276,18 @@ if __name__ == "__main__":
 
 
     #N_u = 1
-    N = 30
+    N = 3000
     N_train = 0
-    t_f = [1e-6,3e-5]
+    t_f = [0,1e-5]
     layers = [20] * 8
     layers = [11, *layers, 8]
 
-    #T  = train_x[0,0:1 ]
-    #p  = train_x[0,1:2 ]
-    T  = [1190, 1210]
-    p  = [9.5e4, 1.05e5 ]
-    Yi = train_x[0,2:11]
-    Yi = Yi.reshape(1,9)
+    T_int  = train_x[120,0:1 ]
+    p_int  = train_x[120,1:2 ]
+    Yi_int = train_x[120,2:11]
+    T  = [T_int-10, T_int+10]
+    p  = [p_int-5e3, p_int+5e3]
+    Yi = Yi_int.reshape(1,9)
     Exact = np.real(train_y)
     model = PhysicsInformedNN(N, t_f, T, p, Yi, layers)
 
