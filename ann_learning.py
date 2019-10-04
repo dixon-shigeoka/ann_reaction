@@ -84,11 +84,11 @@ train_x = np.log(train_x)
 
 #standardization
 mean_x = np.mean(train_x,axis=0)
-#mean_y = np.mean(train_y,axis=0)
+mean_y = np.mean(train_y,axis=0)
 std_x = np.std(train_x,axis=0)
-#std_y = np.std(train_y,axis=0)
+std_y = np.std(train_y,axis=0)
 train_x = (train_x - mean_x) / std_x
-#train_y = (train_y - mean_y) / std_y
+train_y = (train_y - mean_y) / std_y
 
 #min-max normalize
 #min_x = np.min(train_x,axis=0)
@@ -187,7 +187,7 @@ for i in range(state_num) :
 
     #学習実行
     epochs = 20000
-    batch_size = 1024
+    batch_size = 16
     verbose = 2
     #history = model.fit(train_x,train_y_state,batch_size,epochs,verbose,
     #                    callbacks=cbks,validation_data=(test_x,test_y))

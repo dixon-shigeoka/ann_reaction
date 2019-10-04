@@ -62,10 +62,10 @@ start         = 0  #検証を開始するstep数
 
 #熱的状態量の算出
 train_int_zeros = np.zeros([1,1])
-#dtmp = train_x[start,0]
-#dprs = train_x[start,1]
-dtmp = 1763
-dprs = 3343232
+dtmp = train_x[start,0]
+dprs = train_x[start,1]
+#dtmp = 1763
+#dprs = 3343232
 aYi = train_x[start,2:10]
 train_int_append = np.append(train_int_zeros,dtmp)
 train_int_append = np.append(train_int_append,dprs)
@@ -82,6 +82,7 @@ aeng = c.c_double(aeng)
 
 fn1.make_constant_(c.byref(dtmp),c.byref(dprs),aYi,c.byref(totaldens),c.byref(aeng))
 
+print(totaldens,aeng)
 totaldens = totaldens.value
 aeng = aeng.value
 
@@ -95,6 +96,7 @@ train_y = np.delete(train_y,0,1)
 
 print(data_length)
 print(train_x[(start+data_length[data_num-1]),:])
+print(train_int_moment)
 
 #標準化または対数正規化
 #Yiのみ対数変換
@@ -133,8 +135,14 @@ model.load_weights(abspath_weight)
 
 eval_data = np.zeros([1,input_num])
 eval_zeros = np.zeros([1,1])
-#train = train_x[(start+data_length[data_num-1]),:]
-train = train_int*std_x + mean_x
+train = train_x[(start+data_length[data_num-1]),:]
+
+#standardization
+train_int_moment = np.log(train_int_moment)
+#train = (train_int_moment - mean_x) / std_x
+
+print(train_x[(start+data_length[data_num-1]),:])
+print(train)
 
 train_int = train.reshape(1,input_num)
 eval_moment = model.predict(train_int)

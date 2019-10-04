@@ -290,7 +290,8 @@ subroutine imtss(dtmp,dprs,aYi,delt)
   aflgm7 = 1.d0 * aflag
   aflgm8 = 1.d0 * aflag
 
-  !write(6,*) "before Loop totaldens", totaldens
+  !write(6,*) "before loop totaldens", totaldens
+  !write(6,*) "before loop aeng", aeng
   !write(6,*) "before Loop tmp", atmp
   !write(6,*) "before Loop adns", adns(:)
 

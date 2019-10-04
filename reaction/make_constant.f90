@@ -111,10 +111,9 @@ subroutine make_constant(dtmp,dprs,aYi,totaldens,aeng)
     &  /), (/7,lsp,3/))
 
 
-
-
   ah = 0d0
   atmpr = 1/dtmp
+  at = dtmp
   itm = 1 + int(a05 + sign(a05,(at - dplt)))
   atmw(:) = aYi(:)*dmlr(:)      ! amlf(:)/atw
   druo    = dru*(sum(atmw(:)))
