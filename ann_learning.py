@@ -157,9 +157,9 @@ for i in range(state_num) :
     #model.add(BatchNormalization())
     model.add(Activation('relu'))
     #model.add(Dropout(0.1))
-    #model.add(Dense(30))
+    model.add(Dense(30))
     #model.add(BatchNormalization())
-    #model.add(Activation('relu'))
+    model.add(Activation('relu'))
     #model.add(Dropout(0.1))
     model.add(Dense(output_num))
     model.add(Activation('sigmoid'))
@@ -187,7 +187,7 @@ for i in range(state_num) :
 
     #学習実行
     epochs = 20000
-    batch_size = 16
+    batch_size = 254
     verbose = 2
     #history = model.fit(train_x,train_y_state,batch_size,epochs,verbose,
     #                    callbacks=cbks,validation_data=(test_x,test_y))

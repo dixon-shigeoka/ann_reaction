@@ -26,8 +26,8 @@ fn.imtss_.restype = c.c_void_p
 # chemical_database
 
 aemn = 1.e-12
-delt_base = 1.e-9 # base timeの時間刻み
-delt_mts  = 1.e-9 # mts loopの時間刻み
+delt_base = 1.e-8 # base timeの時間刻み
+delt_mts  = 1.e-7 # mts loopの時間刻み
 range_mts = 1     # mts loopを回す回数
 list_num  = 9     # 要素数
 tcounter  = 0     # 温度を変化させるループのカウンター
@@ -42,17 +42,17 @@ data_length = np.zeros([1,1])
 dtmp = 0
 counter = 0     # データ数カウンター
 
-for i in range(1):  #質量分率，温度，密度を変化させるループ(base time)
+for i in range(20):  #質量分率，温度，密度を変化させるループ(base time)
 
     #print(dtmp)
     data_length = np.append(data_length,counter)
     t1 = time.time()
-    #dtmp = 1200 + float(tcounter*10)
+    dtmp = 1300 + float(tcounter*10)
     #dtmp = 1763 + 100*np.random.rand(1)*-1**tcounter
-    dtmp = 1763
-    #dprs = 1.01325e5
+    #dtmp = 1763
+    dprs = 1.01325e5 * 1.5
     #dprs = 3343232 + 1e5*np.random.rand(1)*-1**tcounter
-    dprs = 3343232
+    #dprs = 3343232
     aMi = np.array([2.016,32.000,1.008,16.000,17.008,18.016,33.008,34.016,28.016])
     aMolarRatio = np.array([2,1,0,0,0,0,0,0,0])
     aMolarRatio = np.where(aMolarRatio == 0,aemn,aMolarRatio)
@@ -67,7 +67,7 @@ for i in range(1):  #質量分率，温度，密度を変化させるループ(b
 
     print(dtmp,dprs,aYi)
 
-    while (equiv_error > 1.E-1 or dtmp < 2000) :     #時間方向にmts計算を行い訓練データを格納するループ(base timeからの変化)
+    while (equiv_error > 1.E-4 or dtmp < 2000) :     #時間方向にmts計算を行い訓練データを格納するループ(base timeからの変化)
     #while (aYi[0,2] < 2e-5) :
 
         counter = counter + 1
