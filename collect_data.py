@@ -47,12 +47,12 @@ for i in range(20):  #質量分率，温度，密度を変化させるループ(
     #print(dtmp)
     data_length = np.append(data_length,counter)
     t1 = time.time()
-    dtmp = 1300 + float(tcounter*10)
+    dtmp = 1200 + float(tcounter*10)
     #dtmp = 1763 + 100*np.random.rand(1)*-1**tcounter
-    #dtmp = 1763
-    dprs = 1.01325e5 * 1.5
+    #dtmp = 1400
+    #dprs = 1.01325e5
     #dprs = 3343232 + 1e5*np.random.rand(1)*-1**tcounter
-    #dprs = 3343232
+    dprs =1.01325e5
     aMi = np.array([2.016,32.000,1.008,16.000,17.008,18.016,33.008,34.016,28.016])
     aMolarRatio = np.array([2,1,0,0,0,0,0,0,0])
     aMolarRatio = np.where(aMolarRatio == 0,aemn,aMolarRatio)

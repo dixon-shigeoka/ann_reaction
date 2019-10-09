@@ -1,6 +1,7 @@
 import numpy as np
 import time
 import os
+import shutil
 import scipy.io
 from keras.models import Sequential
 from keras.layers import Dense,BatchNormalization,Activation,Dropout
@@ -36,8 +37,13 @@ abspath_model_temp = abspath + '/learned_model/temp_model.json'
 abspath_weight_temp = abspath + '/learned_model/temp_weight.hdf5'
 abspath_model_mass = abspath + '/learned_model/mass_model.json'
 abspath_weight_mass = abspath + '/learned_model/mass_weight.hdf5'
+abspath_weight = abspath + '/learned_model/weight_history/'
 abspath_tflog = abspath + '/tflog/'
-print(abspath_x)
+print(abspath_weight)
+
+#履歴の削除
+shutil.rmtree(abspath_weight)
+os.mkdir(abspath_weight)
 
 # MTS training dataの読み込み
 #print('train_y',train_y)
@@ -84,11 +90,11 @@ train_x = np.log(train_x)
 
 #standardization
 mean_x = np.mean(train_x,axis=0)
-mean_y = np.mean(train_y,axis=0)
+#mean_y = np.mean(train_y,axis=0)
 std_x = np.std(train_x,axis=0)
-std_y = np.std(train_y,axis=0)
+#std_y = np.std(train_y,axis=0)
 train_x = (train_x - mean_x) / std_x
-train_y = (train_y - mean_y) / std_y
+#train_y = (train_y - mean_y) / std_y
 
 #min-max normalize
 #min_x = np.min(train_x,axis=0)
@@ -102,22 +108,22 @@ X = train_x
 Y = train_y
 
 ##自作cost functionの実装
-def loss_logadd(y_true,y_pred):
+def loss_log(y_true,y_pred):
     first_log = K.log(K.abs(y_pred))
     second_log = K.log(K.abs(y_true))
-    return  K.mean(K.square(K.abs(y_pred - y_true) + first_log - second_log),axis=-1)
+    return  K.mean(K.square(first_log - second_log),axis=-1)
 
-def loss_logadd2(y_true,y_pred):
+def loss_logaddmse(y_true,y_pred):
     first_log = K.log(K.abs(y_pred))
     second_log = K.log(K.abs(y_true))
     #return  K.mean(K.square(K.abs(y_pred - y_true) + K.log(y_pred/y_true)),axis=0)
     #return  K.mean(K.square(K.abs(y_pred - y_true) + tf.div(y_pred,y_true)),axis=-1)
-    return  K.mean(K.square(K.abs(y_pred - y_true) + first_log - second_log),axis=-1)
+    return  K.mean(K.square(K.abs(y_pred - y_true + first_log - second_log)),axis=-1)
 
 def mix_mse_mape(y_true,y_pred):
     first_log  = K.abs(y_pred)
     second_log = K.abs(y_true)
-    return  K.mean(K.square(K.abs(y_pred - y_true) + K.abs(y_true - y_pred)/y_true),axis=-1)
+    return  K.mean(K.square(K.abs(y_pred - y_true) + K.abs(y_pred - y_true)/y_true),axis=-1)
 
 #time record
 t1 = time.time()
@@ -149,23 +155,27 @@ for i in range(state_num) :
 
     print(train_y_state)
 
-    # define X-fold cross validation
     model = Sequential()
 
     #パラメータ設定
     model.add(Dense(30,input_dim=input_num))
     #model.add(BatchNormalization())
     model.add(Activation('relu'))
-    #model.add(Dropout(0.1))
+    #model.add(Dropout(0.5))
     model.add(Dense(30))
     #model.add(BatchNormalization())
     model.add(Activation('relu'))
-    #model.add(Dropout(0.1))
+    #model.add(Dropout(0.5))
+    #model.add(Dense(30))
+    #model.add(BatchNormalization())
+    #model.add(Activation('relu'))
+    #model.add(Dropout(0.5))
     model.add(Dense(output_num))
     model.add(Activation('sigmoid'))
     #model.compile(optimizer='adam',loss='mean_squared_error',metrics=['mae'])
-    model.compile(optimizer='adam',loss=loss_logadd2,metrics=['mae'])
-    #model.compile(optimizer='adam',loss=mix_mse_mape,metrics=['acc'])
+    #model.compile(optimizer='adam',loss=loss_log,metrics=['mae'])
+    model.compile(optimizer='adam',loss=loss_logaddmse,metrics=['mae'])
+    #model.compile(optimizer='adam',loss=mix_mse_mape,metrics=['mae'])
     model.summary()
 
     ### make callbacks
@@ -175,31 +185,22 @@ for i in range(state_num) :
                                         write_grads=True,
                                         write_images=True
     )
-    abspath_weight = abspath + '/learned_model/weight_history/stanford_weights_{epoch:02d}_{loss:.2E}_{val_loss:.2E}.hdf5'
-    #cp_cb = keras.callbacks.ModelCheckpoint(filepath=abspath_weight, monitor="val_loss", verbose=0,
-    #                                        save_best_only=True
-    #)
-    es_cb = keras.callbacks.EarlyStopping(monitor='val_loss', patience=100, verbose=1,mode='min')
-    #cbks = [tb_cb,cp_cb]
-    cbks = [tb_cb]
+    abspath_weight = abspath + '/learned_model/weight_history/stanford_weights_{epoch:02d}_{loss:.2e}_{val_loss:.2e}.hdf5'
+    cp_cb = keras.callbacks.ModelCheckpoint(filepath=abspath_weight, monitor="val_loss", verbose=0,
+                                            save_best_only=True
+    )
+    es_cb = keras.callbacks.EarlyStopping(monitor='val_loss', patience=10000, verbose=1,mode='min')
+    cbks = [tb_cb,cp_cb,es_cb]
+    #cbks = [tb_cb]
     ###
 
 
     #学習実行
-    epochs = 20000
-    batch_size = 254
+    epochs = 10000
+    batch_size = 4096
     verbose = 2
-    #history = model.fit(train_x,train_y_state,batch_size,epochs,verbose,
-    #                    callbacks=cbks,validation_data=(test_x,test_y))
-    history = model.fit(train_x,train_y_state,batch_size,epochs,verbose,callbacks=cbks)
-
-    ##学習実行
-    #epochs = 1000
-    #batch_size = 1
-    #verbose = 2
-    ##history = model.fit(train_x,train_y_state,batch_size,epochs,verbose,
-    ##                    callbacks=cbks,validation_data=(test_x,test_y))
     #history = model.fit(train_x,train_y_state,batch_size,epochs,verbose,callbacks=cbks)
+    history = model.fit(train_x,train_y_state,batch_size,epochs,verbose,callbacks=cbks,validation_split=0.1)
 
     #評価
     #score = model.evaluate(test_x, test_y, verbose=1)
@@ -234,15 +235,19 @@ for i in range(state_num) :
 #    model = Sequential()
 #
 #    #パラメータ設定
-#    model.add(Dense(36,input_dim=2))
-#    model.add(BatchNormalization())
+#    model.add(Dense(30,input_dim=input_num))
+#    #model.add(BatchNormalization())
 #    model.add(Activation('relu'))
-#    model.add(Dense(36))
-#    model.add(BatchNormalization())
+#    #model.add(Dropout(0.1))
+#    model.add(Dense(30))
+#    #model.add(BatchNormalization())
 #    model.add(Activation('relu'))
-#    model.add(Dense(2))
-#    model.compile(optimizer='adam',loss='mean_squared_error',metrics=['mae'])
-#    #model.compile(optimizer='adam',loss=loss_logadd,metrics=['mae'])
+#    #model.add(Dropout(0.1))
+#    model.add(Dense(output_num))
+#    model.add(Activation('sigmoid'))
+#    #model.compile(optimizer='adam',loss='mean_squared_error',metrics=['mae'])
+#    model.compile(optimizer='adam',loss=loss_logadd2,metrics=['mae'])
+#    #model.compile(optimizer='adam',loss=mix_mse_mape,metrics=['mae'])
 #    model.summary()
 #
 #
@@ -261,19 +266,18 @@ for i in range(state_num) :
 #
 #
 #    #学習実行
-#    epochs = 10
-#    batch_size = 64
+#    epochs = 20000
+#    batch_size = 4096
 #    verbose = 1
 #    history = model.fit(X[train],Y[train],batch_size,epochs,verbose,
-#
-#callbacks=cbks,validation_data=(X[test],Y[test])
+#                        callbacks=cbks,validation_data=(X[test],Y[test])
 #
 #
 #    #評価
 #    score = model.evaluate(X[test], Y[test], verbose=1)
 #    print(model.metrics_names[1], score[1])
 #    cvscores.append(score[1])
-#####################################
+######################################
 
 
 t2 = time.time()
