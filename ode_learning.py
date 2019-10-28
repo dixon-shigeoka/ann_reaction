@@ -168,6 +168,7 @@ class PhysicsInformedNN:
         rhoi = self.neural_net(tf.concat([t,T,p,Yi],axis=1), self.weights, self.biases)
         rhoi_t = tf.gradients(rhoi, t)[0]
         f = rhoi_t - omegai
+        f = tf.log(tf.abs(f))
         return f
 
     def callback(self, loss):
@@ -228,11 +229,8 @@ if __name__ == "__main__":
     abspath = os.path.dirname(os.path.abspath(__file__))
     abspath_x = abspath + '/learning_data/train_x.npy'
     abspath_y = abspath + '/learning_data/train_y.npy'
-    abspath_model = abspath + '/learned_model/stanford_model.json'
-    abspath_model_temp = abspath + '/learned_model/temp_model.json'
-    abspath_weight_temp = abspath + '/learned_model/temp_weight.hdf5'
-    abspath_model_mass = abspath + '/learned_model/mass_model.json'
-    abspath_weight_mass = abspath + '/learned_model/mass_weight.hdf5'
+    abspath_model = abspath + '/learned_model/ode_model.json'
+    abspath_weight = abspath + '/learned_model/ode_weight.hdf5'
     abspath_tflog = abspath + '/tflog/'
 
     # MTS training dataの読み込み
@@ -282,10 +280,13 @@ if __name__ == "__main__":
     layers = [20] * 8
     layers = [11, *layers, 8]
 
-    T_int  = train_x[120,0:1 ]
-    p_int  = train_x[120,1:2 ]
-    Yi_int = train_x[120,2:11]
-    T  = [T_int-10, T_int+10]
+    #T_int  = train_x[120,0:1 ]
+    #p_int  = train_x[120,1:2 ]
+    #Yi_int = train_x[120,2:11]
+    Yi_int = train_x[0,2:11]
+    T_int = 1400
+    p_int = 1.01325e5 * 1.5
+    T  = [T_int, T_int+200]
     p  = [p_int-5e3, p_int+5e3]
     Yi = Yi_int.reshape(1,9)
     Exact = np.real(train_y)
@@ -296,14 +297,18 @@ if __name__ == "__main__":
     elapsed = time.time() - start_time
     print('Training time: %.4f' % (elapsed))
 
-    t = np.array([3e-5])
-    T = np.array([1200])
-    p = np.array([1.01325e5])
-    Yi = np.delete(Yi,-1,axis=1)
-    Yi_pred = model.predict(t, T, p, Yi)
 
-    error_u = np.linalg.norm(train_y-Yi_pred,2)/np.linalg.norm(train_y,2)
-    print('Error u: %e' % (error_Yi))
+    open(abspath_model,"w").write(model.to_json())
+    model.save_weights(abspath_weight)
+
+    #t = np.array([3e-5])
+    #T = np.array([1200])
+    #p = np.array([1.01325e5])
+    #Yi = np.delete(Yi,-1,axis=1)
+    #Yi_pred = model.predict(t, T, p, Yi)
+
+    #error_u = np.linalg.norm(train_y-Yi_pred,2)/np.linalg.norm(train_y,2)
+    #print('Error u: %e' % (error_Yi))
 
 
 ##modelの保存

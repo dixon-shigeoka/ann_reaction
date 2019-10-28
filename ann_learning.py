@@ -7,6 +7,9 @@ from keras.models import Sequential
 from keras.layers import Dense,BatchNormalization,Activation,Dropout
 from keras import backend as K
 from keras.initializers import he_normal
+from tensorflow.python.framework.graph_util import convert_variables_to_constants
+import keras.backend.tensorflow_backend as KTF
+import tensorflow as tf
 from sklearn.model_selection import KFold, train_test_split
 
 
@@ -15,10 +18,9 @@ import keras.callbacks
 import keras.backend.tensorflow_backend as KTF
 import tensorflow as tf
 
-#old_session = KTF.get_session()
-#
-#session = tf.Session('')
-#KTF.set_session(session)
+old_session = KTF.get_session()
+sess = tf.Session('')
+KTF.set_session(sess)
 #KTF.set_learning_phase(1)
 ###
 
@@ -111,6 +113,7 @@ Y = train_y
 def loss_log(y_true,y_pred):
     first_log = K.log(K.abs(y_pred))
     second_log = K.log(K.abs(y_true))
+    #return  K.mean(K.square(K.abs(first_log - second_log)),axis=-1)
     return  K.mean(K.square(first_log - second_log),axis=-1)
 
 def loss_logaddmse(y_true,y_pred):
@@ -118,7 +121,7 @@ def loss_logaddmse(y_true,y_pred):
     second_log = K.log(K.abs(y_true))
     #return  K.mean(K.square(K.abs(y_pred - y_true) + K.log(y_pred/y_true)),axis=0)
     #return  K.mean(K.square(K.abs(y_pred - y_true) + tf.div(y_pred,y_true)),axis=-1)
-    return  K.mean(K.square(K.abs(y_pred - y_true + first_log - second_log)),axis=-1)
+    return  K.mean(K.square(K.abs((y_pred - y_true) + first_log - second_log)),axis=-1)
 
 def mix_mse_mape(y_true,y_pred):
     first_log  = K.abs(y_pred)
@@ -173,8 +176,9 @@ for i in range(state_num) :
     model.add(Dense(output_num))
     model.add(Activation('sigmoid'))
     #model.compile(optimizer='adam',loss='mean_squared_error',metrics=['mae'])
-    #model.compile(optimizer='adam',loss=loss_log,metrics=['mae'])
-    model.compile(optimizer='adam',loss=loss_logaddmse,metrics=['mae'])
+    #model.compile(optimizer='adam',loss='mean_squared_logarithmic_error',metrics=['mae'])
+    model.compile(optimizer='adam',loss=loss_log,metrics=['mae'])
+    #model.compile(optimizer='adam',loss=loss_logaddmse,metrics=['mae'])
     #model.compile(optimizer='adam',loss=mix_mse_mape,metrics=['mae'])
     model.summary()
 
@@ -189,14 +193,15 @@ for i in range(state_num) :
     cp_cb = keras.callbacks.ModelCheckpoint(filepath=abspath_weight, monitor="val_loss", verbose=0,
                                             save_best_only=True
     )
-    es_cb = keras.callbacks.EarlyStopping(monitor='val_loss', patience=10000, verbose=1,mode='min')
+    #es_cb = keras.callbacks.EarlyStopping(monitor='val_loss', patience=1000, verbose=1,mode='min')
+    es_cb = keras.callbacks.EarlyStopping(monitor='val_loss', patience=20000, verbose=1,mode='min')
     cbks = [tb_cb,cp_cb,es_cb]
     #cbks = [tb_cb]
     ###
 
 
     #学習実行
-    epochs = 10000
+    epochs = 20000
     batch_size = 4096
     verbose = 2
     #history = model.fit(train_x,train_y_state,batch_size,epochs,verbose,callbacks=cbks)
@@ -284,10 +289,23 @@ t2 = time.time()
 print('errapsed time is ',t2-t1)
 #print((np.mean(cvscores), np.std(cvscores)))
 
-#modelの保存
+#saving model for python
 abspath_weight = abspath + '/learned_model/stanford_weight.hdf5'
 open(abspath_model,"w").write(model.to_json())
 model.save_weights(abspath_weight)
+
+#saving model for c++
+abspath_model_for_c = abspath + '/learned_model/model_for_c++/'
+saver = tf.compat.v1.train.Saver()
+saver.save(sess, "./learned_model/model_for_c++/model.ckpt")
+saver.export_meta_graph("./learned_model/model_for_c++/model.meta")
+tf.io.write_graph(sess.graph.as_graph_def(), "./learned_model/model_for_c++/" ,"graph.pb")
+
+#saving statistic data for c++
+abspath_mean = abspath + '/cpp/resource/mean.csv'
+abspath_std = abspath + '/cpp/resource/std.csv'
+np.savetxt(abspath_mean,mean_x,delimiter=',')
+np.savetxt(abspath_std,std_x,delimiter=',')
 
 ### add for TensorBoard
 #KTF.set_session(old_session)
