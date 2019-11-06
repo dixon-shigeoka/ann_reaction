@@ -130,7 +130,7 @@ CMAKE_OBJCOPY:FILEPATH=/usr/bin/objcopy
 CMAKE_OBJDUMP:FILEPATH=/usr/bin/objdump
 
 //Value Computed by CMake
-CMAKE_PROJECT_NAME:STATIC=NumberDetector
+CMAKE_PROJECT_NAME:STATIC=Predictor
 
 //Path to a program.
 CMAKE_RANLIB:FILEPATH=/usr/bin/ranlib
@@ -186,6 +186,12 @@ NumberDetector_BINARY_DIR:STATIC=/home/shigeoka/src/ann_reaction/cpp/build
 
 //Value Computed by CMake
 NumberDetector_SOURCE_DIR:STATIC=/home/shigeoka/src/ann_reaction/cpp
+
+//Value Computed by CMake
+Predictor_BINARY_DIR:STATIC=/home/shigeoka/src/ann_reaction/cpp/build
+
+//Value Computed by CMake
+Predictor_SOURCE_DIR:STATIC=/home/shigeoka/src/ann_reaction/cpp
 
 
 ########################

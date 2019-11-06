@@ -111,17 +111,17 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named NumberDetector
+# Target rules for targets named Predictor
 
 # Build rule for target.
-NumberDetector: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 NumberDetector
-.PHONY : NumberDetector
+Predictor: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 Predictor
+.PHONY : Predictor
 
 # fast build rule for target.
-NumberDetector/fast:
-	$(MAKE) -f CMakeFiles/NumberDetector.dir/build.make CMakeFiles/NumberDetector.dir/build
-.PHONY : NumberDetector/fast
+Predictor/fast:
+	$(MAKE) -f CMakeFiles/Predictor.dir/build.make CMakeFiles/Predictor.dir/build
+.PHONY : Predictor/fast
 
 predict.o: predict.cpp.o
 
@@ -129,7 +129,7 @@ predict.o: predict.cpp.o
 
 # target to build an object file
 predict.cpp.o:
-	$(MAKE) -f CMakeFiles/NumberDetector.dir/build.make CMakeFiles/NumberDetector.dir/predict.cpp.o
+	$(MAKE) -f CMakeFiles/Predictor.dir/build.make CMakeFiles/Predictor.dir/predict.cpp.o
 .PHONY : predict.cpp.o
 
 predict.i: predict.cpp.i
@@ -138,7 +138,7 @@ predict.i: predict.cpp.i
 
 # target to preprocess a source file
 predict.cpp.i:
-	$(MAKE) -f CMakeFiles/NumberDetector.dir/build.make CMakeFiles/NumberDetector.dir/predict.cpp.i
+	$(MAKE) -f CMakeFiles/Predictor.dir/build.make CMakeFiles/Predictor.dir/predict.cpp.i
 .PHONY : predict.cpp.i
 
 predict.s: predict.cpp.s
@@ -147,7 +147,7 @@ predict.s: predict.cpp.s
 
 # target to generate assembly for a file
 predict.cpp.s:
-	$(MAKE) -f CMakeFiles/NumberDetector.dir/build.make CMakeFiles/NumberDetector.dir/predict.cpp.s
+	$(MAKE) -f CMakeFiles/Predictor.dir/build.make CMakeFiles/Predictor.dir/predict.cpp.s
 .PHONY : predict.cpp.s
 
 tf_utils.o: tf_utils.cpp.o
@@ -156,7 +156,7 @@ tf_utils.o: tf_utils.cpp.o
 
 # target to build an object file
 tf_utils.cpp.o:
-	$(MAKE) -f CMakeFiles/NumberDetector.dir/build.make CMakeFiles/NumberDetector.dir/tf_utils.cpp.o
+	$(MAKE) -f CMakeFiles/Predictor.dir/build.make CMakeFiles/Predictor.dir/tf_utils.cpp.o
 .PHONY : tf_utils.cpp.o
 
 tf_utils.i: tf_utils.cpp.i
@@ -165,7 +165,7 @@ tf_utils.i: tf_utils.cpp.i
 
 # target to preprocess a source file
 tf_utils.cpp.i:
-	$(MAKE) -f CMakeFiles/NumberDetector.dir/build.make CMakeFiles/NumberDetector.dir/tf_utils.cpp.i
+	$(MAKE) -f CMakeFiles/Predictor.dir/build.make CMakeFiles/Predictor.dir/tf_utils.cpp.i
 .PHONY : tf_utils.cpp.i
 
 tf_utils.s: tf_utils.cpp.s
@@ -174,7 +174,7 @@ tf_utils.s: tf_utils.cpp.s
 
 # target to generate assembly for a file
 tf_utils.cpp.s:
-	$(MAKE) -f CMakeFiles/NumberDetector.dir/build.make CMakeFiles/NumberDetector.dir/tf_utils.cpp.s
+	$(MAKE) -f CMakeFiles/Predictor.dir/build.make CMakeFiles/Predictor.dir/tf_utils.cpp.s
 .PHONY : tf_utils.cpp.s
 
 # Help Target
@@ -185,7 +185,7 @@ help:
 	@echo "... depend"
 	@echo "... rebuild_cache"
 	@echo "... edit_cache"
-	@echo "... NumberDetector"
+	@echo "... Predictor"
 	@echo "... predict.o"
 	@echo "... predict.i"
 	@echo "... predict.s"

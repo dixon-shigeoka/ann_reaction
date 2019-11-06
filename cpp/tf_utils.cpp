@@ -158,6 +158,7 @@ bool RunSession(TF_Graph* graph,
 
 TF_Tensor* CreateTensor(TF_DataType data_type,
                         const std::int64_t* dims, std::size_t num_dims,
+                        //const double* dims, std::size_t num_dims,
                         const void* data, std::size_t len) {
   if (dims == nullptr || data == nullptr) {
     return nullptr;

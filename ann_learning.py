@@ -97,6 +97,18 @@ std_x = np.std(train_x,axis=0)
 #std_y = np.std(train_y,axis=0)
 train_x = (train_x - mean_x) / std_x
 #train_y = (train_y - mean_y) / std_y
+mean = mean_x.reshape(1,10)
+std = std_x.reshape(1,10)
+statistics_x = np.concatenate([mean,std],axis=0)
+print(statistics_x)
+
+#saving statistic data for c++
+abspath_stat = abspath + '/cpp/resource/statistics.csv'
+abspath_mean = abspath + '/cpp/resource/mean.csv'
+abspath_std = abspath + '/cpp/resource/std.csv'
+np.savetxt(abspath_stat,statistics_x,delimiter=',')
+np.savetxt(abspath_mean,mean_x,delimiter=',')
+np.savetxt(abspath_std,std_x,delimiter=',')
 
 #min-max normalize
 #min_x = np.min(train_x,axis=0)
@@ -156,11 +168,12 @@ for i in range(state_num) :
     else :
         train_y_state = train_y
 
-    print(train_y_state)
+    #print(train_y_state)
 
     model = Sequential()
 
     #パラメータ設定
+    #model.add(InputLayer(input_shape=(input_num,)))
     model.add(Dense(30,input_dim=input_num))
     #model.add(BatchNormalization())
     model.add(Activation('relu'))
@@ -181,6 +194,9 @@ for i in range(state_num) :
     #model.compile(optimizer='adam',loss=loss_logaddmse,metrics=['mae'])
     #model.compile(optimizer='adam',loss=mix_mse_mape,metrics=['mae'])
     model.summary()
+
+    for layer in model.layers:
+        print(layer.output_shape)
 
     ### make callbacks
     ### add for TensorBoard
@@ -294,6 +310,10 @@ abspath_weight = abspath + '/learned_model/stanford_weight.hdf5'
 open(abspath_model,"w").write(model.to_json())
 model.save_weights(abspath_weight)
 
+#saving model for python
+abspath_model = abspath + '/learned_model/stanford_model.h5'
+model.save(abspath_model, include_optimizer=False)
+
 #saving model for c++
 abspath_model_for_c = abspath + '/learned_model/model_for_c++/'
 saver = tf.compat.v1.train.Saver()
@@ -301,11 +321,6 @@ saver.save(sess, "./learned_model/model_for_c++/model.ckpt")
 saver.export_meta_graph("./learned_model/model_for_c++/model.meta")
 tf.io.write_graph(sess.graph.as_graph_def(), "./learned_model/model_for_c++/" ,"graph.pb")
 
-#saving statistic data for c++
-abspath_mean = abspath + '/cpp/resource/mean.csv'
-abspath_std = abspath + '/cpp/resource/std.csv'
-np.savetxt(abspath_mean,mean_x,delimiter=',')
-np.savetxt(abspath_std,std_x,delimiter=',')
 
 ### add for TensorBoard
 #KTF.set_session(old_session)

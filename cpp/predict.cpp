@@ -1,10 +1,18 @@
 #include <stdio.h>
 #include <iostream>
-/* #include <opencv2/opencv.hpp> */
+#include <fstream>
+#include <sstream>
+#include <cmath>
+// #include <opencv2/opencv.hpp> //
 #include <tensorflow/c/c_api.h>
 #include "tf_utils.hpp"
 
-#define MODEL_FILENAME RESOURCE_DIR"frozen_graph.pb"
+//#define MODEL_FILENAME RESOURCE_DIR"frozen_graph.pb"
+#define MODEL_FILENAME RESOURCE_DIR"stanford_model.pb"
+
+// global variable //
+
+
 
 static int displayGraphInfo()
 {
@@ -26,22 +34,48 @@ static int displayGraphInfo()
     return 0;
 }
 
+
+
 int main()
 {
     printf("Hello from TensorFlow C library version %s\n", TF_Version());
 
-    /* read input image data */
-    cv::Mat image = cv::imread(RESOURCE_DIR"4.jpg");
-    cv::imshow("InputImage", image);
 
-    /* convert to 28 x 28 grayscale image (normalized: 0 ~ 1.0) */
-    cv::cvtColor(image, image, CV_BGR2GRAY);
-    cv::resize(image, image, cv::Size(28, 28));
-    image = ~image;
-    cv::imshow("InputImage for CNN", image);
-    image.convertTo(image, CV_32FC1, 1.0 / 255);
+    // read the statistic data from csv files //
+    std::ifstream ifs("./resource/statistics.csv");
+    std::string line;
+    const std::string delim = ",";
 
-    /* get graph info */
+    int row = 0;
+    int col = 0;
+    std::string field;
+    double statistics[2][10];
+
+    while ( std::getline(ifs, line) ) {
+      std::istringstream stream(line);
+      std::vector<std::string> result;
+      std::vector<std::string> strvec;
+      while (getline(stream,field,',')){
+        result.push_back(field);
+        strvec = result;
+      }
+      for (int i=0; i<strvec.size();i++){
+        statistics[col][i] = std::stod(strvec.at(i));
+      }
+      col++;
+    }
+
+    std::vector<double> test_x = {1360.0, 151987.5, 1.11900533e-01, 8.88099467e-01,
+                                  2.79751332e-14, 4.44049734e-13, 4.72024867e-13,
+                                  5.00000000e-13, 9.16074600e-13, 9.44049734e-13};
+
+    // preprocessing for input data //
+    for (int i=0; i<test_x.size(); i++){
+      test_x[i] = log(test_x[i]);
+      test_x[i] = (test_x[i] - statistics[0][i]) / statistics[1][i];
+    }
+
+    // get graph info //
     displayGraphInfo();
 
     TF_Graph *graph = tf_utils::LoadGraphDef(MODEL_FILENAME);
@@ -50,23 +84,25 @@ int main()
         return 1;
     }
 
-    /* prepare input tensor */
-    TF_Output input_op = { TF_GraphOperationByName(graph, "input_1"), 0 };
+    // prepare input tensor //
+    TF_Output input_op = { TF_GraphOperationByName(graph, "dense_1_input"), 0 };
     if (input_op.oper == nullptr) {
         std::cout << "Can't init input_op" << std::endl;
         return 2;
     }
 
-    const std::vector<std::int64_t> input_dims = { 1, 28, 28, 1 };
-    std::vector<float> input_vals;
-    image.reshape(0, 1).copyTo(input_vals); // Mat to vector
 
-    TF_Tensor* input_tensor = tf_utils::CreateTensor(TF_FLOAT,
+    const std::vector<int64_t> input_dims = { 1, 10 };
+    std::vector<double> input_vals;
+    input_vals = test_x;
+    //image.reshape(0, 1).copyTo(input_vals); // Mat to vector
+
+    TF_Tensor* input_tensor = tf_utils::CreateTensor(TF_DOUBLE,
         input_dims.data(), input_dims.size(),
-        input_vals.data(), input_vals.size() * sizeof(float));
+        input_vals.data(), input_vals.size() * sizeof(double));
 
-    /* prepare output tensor */
-    TF_Output out_op = { TF_GraphOperationByName(graph, "dense_1/Softmax"), 0 };
+    // prepare output tensor //
+    TF_Output out_op = { TF_GraphOperationByName(graph, "activation_3/Sigmoid"), 0 };
     if (out_op.oper == nullptr) {
         std::cout << "Can't init out_op" << std::endl;
         return 3;
@@ -74,7 +110,7 @@ int main()
 
     TF_Tensor* output_tensor = nullptr;
 
-    /* prepare session */
+    // prepare session //
     TF_Status* status = TF_NewStatus();
     TF_SessionOptions* options = TF_NewSessionOptions();
     TF_Session* sess = TF_NewSession(graph, options, status);
@@ -85,7 +121,7 @@ int main()
         return 4;
     }
 
-    /* run session */
+    //run session //
     TF_SessionRun(sess,
         nullptr, // Run options.
         &input_op, &input_tensor, 1, // Input tensors, input tensor values, number of inputs.
@@ -96,9 +132,10 @@ int main()
     );
 
     if (TF_GetCode(status) != TF_OK) {
-        std::cout << "Error run session";
-        TF_DeleteStatus(status);
-        return 5;
+      std::cout << TF_GetCode(status) << std::endl;
+      std::cout << "Error run session";
+      TF_DeleteStatus(status);
+      return 5;
     }
 
     TF_CloseSession(sess, status);
@@ -115,10 +152,11 @@ int main()
         return 7;
     }
 
-    const auto probs = static_cast<float*>(TF_TensorData(output_tensor));
+    const auto probs = static_cast<double*>(TF_TensorData(output_tensor));
+    std::cout << TF_TensorData(output_tensor) << std::endl;
 
-    for (int i = 0; i < 10; i++) {
-        printf("prob of %d: %.3f\n", i, probs[i]);
+    for (int i = 0; i < 8; i++) {
+        printf("prob of %d: %.19lf\n", i, probs[i]);
     }
 
     TF_DeleteTensor(input_tensor);
@@ -126,6 +164,6 @@ int main()
     TF_DeleteGraph(graph);
     TF_DeleteStatus(status);
 
-    cv::waitKey(0);
+    //cv::waitKey(0);
     return 0;
 }
