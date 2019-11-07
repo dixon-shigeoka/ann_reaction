@@ -3,7 +3,6 @@
 /tflog/*
 /data/*
 /learned_model/*
-/learned_model/loss_log_1200_1400_1atm
 /legacy
 /ref
 /cpp/libtensorflow/*
