@@ -4,10 +4,10 @@
 
 ISTDIR = ../
 OBJDIR = ./lib
-NAME   = mtsdriver.so
+NAME   = pidriver.so
 TARGET = $(ISTDIR)/$(NAME)
-FC = ifort
-#FC = gfortran
+#FC = ifort
+FC = gfortran
 DEBUG =
 DEBUGOMP =
 FFLAGS =

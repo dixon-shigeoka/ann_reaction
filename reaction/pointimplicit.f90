@@ -1,4 +1,4 @@
-subroutine imtss(dtmp,dprs,aYi,delt)
+subroutine pointimplicit(dtmp,dprs,aYi,delt)
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 !
 !
@@ -1185,12 +1185,11 @@ subroutine imtss(dtmp,dprs,aYi,delt)
     dprs   = totaldens*druo*atmp
     !totaldens = dprs*atmpr/druo
     !totaldens = sum(adns(:))
-    write(6,*) atmp
 
   deallocate(adns,afm,ab)
 
 !-----------------------------------------------------------------------
 
-  end subroutine imtss
+  end subroutine pointimplicit
 
 !=======================================================================

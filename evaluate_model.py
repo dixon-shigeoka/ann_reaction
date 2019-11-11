@@ -49,6 +49,14 @@ fn2.make_properties_.argtypes = [
 ]
 fn2.make_properties_.restype = c.c_void_p
 
+fn3 = np.ctypeslib.load_library("pidriver.so",".")
+fn3.pointimplicit_.argtypes = [
+    c.POINTER(c.c_double),
+    c.POINTER(c.c_double),
+    np.ctypeslib.ndpointer(dtype=np.float64),
+    c.POINTER(c.c_double),
+]
+fn3.pointimplicit_.restype = c.c_void_p
 
 # MTS training dataの読み込み
 #print('train_y',train_y)
@@ -78,7 +86,7 @@ train_int_zeros = np.zeros([1,1])
 #dprs = train_x[start,1]
 #dtmp = 1763
 #dprs = 3343232
-dtmp_init = 1400
+dtmp_init = 1500
 dprs_init = 1.01325e5 * 1.5
 aYi_init = train_x[start,2:11]
 train_int_append = np.append(train_int_zeros,dtmp_init)
@@ -152,6 +160,7 @@ dtmp = dtmp_init
 dprs = dprs_init
 aYi  = aYi_init
 delt_mts = 1.e-7
+totaltime = 0
 
 while (equiv_error > 1.E-4 or dtmp < 2000) :     #時間方向にmts計算を行い訓練データを格納するループ(base timeからの変化)
     #while (aYi[0,2] < 2e-5)
@@ -178,8 +187,19 @@ while (equiv_error > 1.E-4 or dtmp < 2000) :     #時間方向にmts計算を行
     dprs = c.c_double(dprs)
     delt = c.c_double(delt_mem)
 
+    #------------------------------------
+    # prediction
+    #------------------------------------
+    tbefore = time.time()
+
     #byrefでポインタにして渡す，mtsの実行
     fn.imtss_(c.byref(dtmp),c.byref(dprs),aYi,c.byref(delt))
+    #fn3.pointimplicit_(c.byref(dtmp),c.byref(dprs),aYi,c.byref(delt))
+
+    tafter = time.time()
+    totaltime = totaltime + tafter - tbefore
+    #------------------------------------
+
     dtmp = dtmp.value
     dprs = dprs.value
     delt = delt.value
@@ -204,15 +224,18 @@ while (equiv_error > 1.E-4 or dtmp < 2000) :     #時間方向にmts計算を行
 
 train_x = np.delete(train_x,0,0)
 train_y = np.delete(train_y,0,0)
+print('ODE solver time is ', totaltime)
 
 #------------------------------------
 
 
+#------------------------------------
 #------------------------------------
 #evaluation
 #------------------------------------
+#------------------------------------
 
-t1 = time.time()
+totaltime = 0
 
 #modelの読み込み
 abspath_weight = abspath + '/learned_model/stanford_weight.hdf5'
@@ -231,7 +254,17 @@ train = (train_int_moment - mean_x) / std_x
 #print(train)
 
 train_int = train.reshape(1,input_num)
+
+#------------------------------------
+# prediction
+#------------------------------------
+tbefore = time.time()
+
 eval_moment = model.predict(train_int)
+
+tafter = time.time()
+totaltime = totaltime + tafter - tbefore
+#------------------------------------
 
 #data_range = data_length[data_num] - data_length[data_num-1] - 1
 #eval_range = data_range/mts_loop - start - 1 #startから最終ステップまでの長さ
@@ -251,7 +284,16 @@ for ii in range(counter) :
     aeng = c.c_double(aeng)
     #print('aYi',aYi, np.sum(aYi))
 
+    #------------------------------------
+    # make properties
+    #------------------------------------
+    tbefore = time.time()
+
     fn2.make_properties_(c.byref(dtmp),c.byref(dprs),aYi,c.byref(totaldens),c.byref(aeng))
+
+    tafter = time.time()
+    totaltime = totaltime + tafter - tbefore
+    #------------------------------------
 
     dtmp = dtmp.value
     dprs = dprs.value
@@ -269,10 +311,18 @@ for ii in range(counter) :
     eval_next = (eval_next - mean_x) / std_x
     #eval_next = eval_moment.reshape((1,input_num))
     #eval_data = np.concatenate([eval_data,eval_next],axis=0)
+
+    #------------------------------------
+    # prediction
+    #------------------------------------
+    tbefore = time.time()
+
     eval_moment = model.predict(eval_next)
 
-t2 = time.time()
-print('eval time is ',t2-t1)
+    tafter = time.time()
+    totaltime = totaltime + tafter - tbefore
+    #------------------------------------
+
 
 #------------------------------------
 
@@ -307,7 +357,8 @@ print('eval time is ',t2-t1)
 answer_data = train_y
 ann_data = np.delete(eval_data,0,axis=0)
 
-print(answer_data)
+print('evaluation time is', totaltime)
+print('counter is', counter)
 
 np.savetxt(abspath_eval,ann_data,delimiter=',')
 #np.savetxt(abspath_eval,train_data,delimiter=',')

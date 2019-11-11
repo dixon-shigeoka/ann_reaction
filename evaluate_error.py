@@ -49,6 +49,19 @@ fn2.make_properties_.argtypes = [
 ]
 fn2.make_properties_.restype = c.c_void_p
 
+fn3 = np.ctypeslib.load_library("pidriver.so",".")
+fn3.pointimplicit_.argtypes = [
+    c.POINTER(c.c_double),
+    c.POINTER(c.c_double),
+    np.ctypeslib.ndpointer(dtype=np.float64),
+    c.POINTER(c.c_double),
+]
+fn3.pointimplicit_.restype = c.c_void_p
+
+#modelの読み込み
+abspath_weight = abspath + '/learned_model/stanford_weight.hdf5'
+model = model_from_json(open(abspath_model,'r').read())
+model.load_weights(abspath_weight)
 
 # MTS training dataの読み込み
 #print('train_y',train_y)
@@ -58,18 +71,6 @@ data_length_float = np.load(abspath_length)
 data_length = data_length_float.astype(np.int64)
 state_x = np.array(["temp","pres","H2","O2","H","O","OH","H2O","HO2","H2O2","N2","delt"])
 
-
-#######
-#USER DIFINE
-input_num     = 10
-output_num    = 8
-mts_loop      = 1  #base timeからのmts loopの回数
-data_num      = 1  #train_x中で初期値とする状態量の番号
-start         = 0  #検証を開始するstep数
-########
-
-aYi_init = train_x[start,2:11]
-
 #train_x = train_x[0:200,:]
 #train_y = train_y[0:200,:]
 train_x = np.delete(train_x,10,1)
@@ -77,7 +78,6 @@ train_x = np.delete(train_x,10,1)
 train_y = np.delete(train_y,10,1)
 train_y = np.delete(train_y,0,1)
 train_y = np.delete(train_y,0,1)
-
 
 #------------------------------------
 #標準化または対数正規化
@@ -92,8 +92,12 @@ mean_x = np.mean(train_x,axis=0)
 #mean_y = np.mean(train_y,axis=0)
 std_x = np.std(train_x,axis=0)
 #std_y = np.std(train_y,axis=0)
-train_x = (train_x - mean_x) / std_x
+#train_x = (train_x - mean_x) / std_x
 #train_y = (train_y - mean_y) / std_y
+
+#再読み込み
+train_x = np.load(abspath_x)
+train_y = np.load(abspath_y)
 
 #min-max normalize
 #min_x = np.min(train_x,axis=0)
@@ -105,23 +109,25 @@ train_x = (train_x - mean_x) / std_x
 
 #------------------------------------
 
+#######
+#USER DIFINE
+input_num     = 10
+output_num    = 8
+mts_loop      = 1  #base timeからのmts loopの回数
+data_num      = 1  #train_x中で初期値とする状態量の番号
+start         = 0  #検証を開始するstep数
+num_data      = 20 #教師データの初期条件数
+#flag_temp     = 1  #温度用のフラグ
+#flag_pres     = 0  #圧力用のフラグ
+########
 
+data_counter = 0
+error = np.zeros([num_data*2,2])
 
+for i in range (num_data*2) :
 
-for i in range(200) :
+    print ('eval iteration is ', i)
 
-    print(i)
-
-    #------------------------------------
-    #initialize error array
-    #------------------------------------
-    error_equil_temp = np.zeros([1,1])
-    equil_temp = np.zeros([1,1])
-    error_total_temp = np.zeros([1,1])
-    total_temp = np.zeros([1,1])
-    error_total_outputs = np.zeros([1,1])
-    total_outputs = np.zeros([8,1])
-    #------------------------------------
 
     #------------------------------------
     #初期状態の決定と熱的状態量の算出
@@ -131,9 +137,11 @@ for i in range(200) :
     #dprs = train_x[start,1]
     #dtmp = 1763
     #dprs = 3343232
-    dtmp_init = 1300 + i
+
+    dtmp_init = 1300 + float(data_counter*12.5)
     dprs_init = 1.01325e5 * 1.5
-    #aYi_init = train_x[start,2:11]
+    data_counter = data_counter + 1
+    aYi_init = train_x[start,2:11]
     train_int_append = np.append(train_int_zeros,dtmp_init)
     train_int_append = np.append(train_int_append,dprs_init)
     train_int_append = np.append(train_int_append,aYi_init)
@@ -142,6 +150,8 @@ for i in range(200) :
     train_int_moment = train_int_moment.reshape((1,10))
     totaldens = 0
     aeng = 0
+
+    print ('initial temperature is ', dtmp_init)
 
     dtmp = c.c_double(dtmp_init)     #ctypes形式でラップ
     dprs = c.c_double(dprs_init)
@@ -152,8 +162,6 @@ for i in range(200) :
 
     totaldens = totaldens.value
     aeng = aeng.value
-
-
     #------------------------------------
 
 
@@ -165,14 +173,15 @@ for i in range(200) :
     train_y_zeros = np.zeros([1,1])
     train_x = np.zeros([1,12],dtype=float)
     train_y = np.zeros([1,11],dtype=float)
-    equil_error = 0
+    equiv_error = 0
     counter = 0
     dtmp = dtmp_init
     dprs = dprs_init
     aYi  = aYi_init
     delt_mts = 1.e-7
+    totaltime = 0
 
-    while (equil_error > 1.E-4 or dtmp < 2000) :     #時間方向にmts計算を行い訓練データを格納するループ(base timeからの変化)
+    while (equiv_error > 1.E-4 or dtmp < 2000) :     #時間方向にmts計算を行い訓練データを格納するループ(base timeからの変化)
         #while (aYi[0,2] < 2e-5)
 
         counter = counter + 1
@@ -197,8 +206,19 @@ for i in range(200) :
         dprs = c.c_double(dprs)
         delt = c.c_double(delt_mem)
 
+        #------------------------------------
+        # prediction
+        #------------------------------------
+        tbefore = time.time()
+
         #byrefでポインタにして渡す，mtsの実行
         fn.imtss_(c.byref(dtmp),c.byref(dprs),aYi,c.byref(delt))
+        #fn3.pointimplicit_(c.byref(dtmp),c.byref(dprs),aYi,c.byref(delt))
+
+        tafter = time.time()
+        totaltime = totaltime + tafter - tbefore
+        #------------------------------------
+
         dtmp = dtmp.value
         dprs = dprs.value
         delt = delt.value
@@ -218,35 +238,23 @@ for i in range(200) :
         dprs = train_y_append[2]
         aYi  = train_y_append[3:12]
 
-        equil_error = abs(dtmp - temp_before)
+        #equiv_error = abs(aYi[0,0] - H2_before)
+        equiv_error = abs(dtmp - temp_before)
+
+    train_x = np.delete(train_x,0,0)
+    train_y = np.delete(train_y,0,0)
+    #print('ODE solver time is ', totaltime)
+
+    #------------------------------------
 
 
-        #error_calculation
-        total_temp = np.append(total_temp,dtmp)
-        total_outputs = np.append(total_outputs,aYi)
-
-        if (equil_error < 1.E-4):
-            equil_temp = np.append(error_equil_temp,dtmp)
-
-
-        train_x = np.delete(train_x,0,0)
-        train_y = np.delete(train_y,0,0)
-
-        #------------------------------------
-
-    total_temp = total_temp.reshape(counter+1,1)
-    equil_temp = equil_temp.reshape(i+2,1)
-
+    #------------------------------------
     #------------------------------------
     #evaluation
     #------------------------------------
+    #------------------------------------
 
-    t1 = time.time()
-
-    #modelの読み込み
-    abspath_weight = abspath + '/learned_model/stanford_weight.hdf5'
-    model = model_from_json(open(abspath_model,'r').read())
-    model.load_weights(abspath_weight)
+    totaltime = 0
 
     eval_data = np.zeros([1,input_num])
     eval_zeros = np.zeros([1,1])
@@ -260,7 +268,17 @@ for i in range(200) :
     #print(train)
 
     train_int = train.reshape(1,input_num)
+
+    #------------------------------------
+    # prediction
+    #------------------------------------
+    tbefore = time.time()
+
     eval_moment = model.predict(train_int)
+
+    tafter = time.time()
+    totaltime = totaltime + tafter - tbefore
+    #------------------------------------
 
     #data_range = data_length[data_num] - data_length[data_num-1] - 1
     #eval_range = data_range/mts_loop - start - 1 #startから最終ステップまでの長さ
@@ -280,23 +298,22 @@ for i in range(200) :
         aeng = c.c_double(aeng)
         #print('aYi',aYi, np.sum(aYi))
 
+        #------------------------------------
+        # make properties
+        #------------------------------------
+        tbefore = time.time()
+
         fn2.make_properties_(c.byref(dtmp),c.byref(dprs),aYi,c.byref(totaldens),c.byref(aeng))
+
+        tafter = time.time()
+        totaltime = totaltime + tafter - tbefore
+        #------------------------------------
 
         dtmp = dtmp.value
         dprs = dprs.value
         totaldens = totaldens.value
         aeng = aeng.value
         #print('temp',dtmp, 'dprs',dprs)
-
-
-        #error calculation
-        abs_error_temp = np.abs(total_temp[i+1,0] - dtmp)
-        error_total_temp = np.append(error_total_temp,abs_error_temp)
-
-        if (ii == counter) :
-            abs_error_equil_temp = np.abs(equil_temp[i+2,0] - dtmp)
-            error_equil_temp = np.append(error_equil_temp,abs_error_equil_temp)
-
 
         eval_append = np.append(eval_zeros,dtmp)
         eval_append = np.append(eval_append,dprs)
@@ -308,46 +325,66 @@ for i in range(200) :
         eval_next = (eval_next - mean_x) / std_x
         #eval_next = eval_moment.reshape((1,input_num))
         #eval_data = np.concatenate([eval_data,eval_next],axis=0)
+
+        #------------------------------------
+        # prediction
+        #------------------------------------
+        tbefore = time.time()
+
         eval_moment = model.predict(eval_next)
 
-
-    t2 = time.time()
-    print('eval time is ',t2-t1)
-
-#------------------------------------
-
-#標準化または正規化の再変換
-#min-max normalize
-#train_y = train_y*(max_y - min_y) + min_y
-#eval_data = eval_data*(max_y - min_y) + min_y
-#train_x = train_x*(max_x - min_x) + min_x
-
-#standardization
-#eval_data = std_y * eval_data + mean_y
-#train_y = std_y * train_y + mean_y
-#train_x = std_x * train_x + mean_x
+        tafter = time.time()
+        totaltime = totaltime + tafter - tbefore
+        #------------------------------------
 
 
-#exp conversion
-#train_y = np.exp(train_y)
-#eval_data = np.exp(eval_data)
-#train_x = np.exp(train_x)
+    #------------------------------------
 
-#train = train_x[(data_length[data_num]),:]
-#print(train)
-#print(train_x[start,:])
-#print(train_y[start,:])
-#print(eval_data)
+    #標準化または正規化の再変換
+    #min-max normalize
+    #train_y = train_y*(max_y - min_y) + min_y
+    #eval_data = eval_data*(max_y - min_y) + min_y
+    #train_x = train_x*(max_x - min_x) + min_x
 
-#train_data = train_x[start*mts_loop::mts_loop,]
-#answer_data = train_y[start*mts_loop::mts_loop,]
-#train_data = train_x[start*mts_loop::mts_loop,:]
-#answer_moment = train_y[start+data_length[data_num-1]::mts_loop,:]
-#answer_data = answer_moment[0:data_range-start+1,:]
-answer_data = train_y
-ann_data = np.delete(eval_data,0,axis=0)
+    #standardization
+    #eval_data = std_y * eval_data + mean_y
+    #train_y = std_y * train_y + mean_y
+    #train_x = std_x * train_x + mean_x
 
-print(answer_data)
+
+    #exp conversion
+    #train_y = np.exp(train_y)
+    #eval_data = np.exp(eval_data)
+    #train_x = np.exp(train_x)
+
+    #train = train_x[(data_length[data_num]),:]
+    #print(train)
+    #print(train_x[start,:])
+    #print(train_y[start,:])
+    #print(eval_data)
+
+    #train_data = train_x[start*mts_loop::mts_loop,]
+    #answer_data = train_y[start*mts_loop::mts_loop,]
+    #train_data = train_x[start*mts_loop::mts_loop,:]
+    #answer_moment = train_y[start+data_length[data_num-1]::mts_loop,:]
+    #answer_data = answer_moment[0:data_range-start+1,:]
+    answer_data = train_y
+    ann_data = np.delete(eval_data,0,axis=0)
+
+    #print('evaluation time is', totaltime)
+    #print('counter is', counter)
+    print(answer_data[-1,0])
+    print(ann_data[-1,0])
+
+    total_error = 0
+    for iii in range (counter) :
+        for iiii in range (8) :
+            total_error = total_error + abs(answer_data[iii,iiii] - ann_data[iii,iiii])
+
+    error[i,0] = dtmp_init
+    #error[i,0] = dprs_init
+    error[i,1] = total_error
+
 
 np.savetxt(abspath_eval,ann_data,delimiter=',')
 #np.savetxt(abspath_eval,train_data,delimiter=',')

@@ -5,4 +5,5 @@
 /learned_model/*
 /legacy
 /ref
+/logs
 /cpp/libtensorflow/*

@@ -22,6 +22,14 @@ fn.imtss_.argtypes = [
 ]
 fn.imtss_.restype = c.c_void_p
 
+fn3 = np.ctypeslib.load_library("pidriver.so",".")
+fn3.pointimplicit_.argtypes = [
+    c.POINTER(c.c_double),
+    c.POINTER(c.c_double),
+    np.ctypeslib.ndpointer(dtype=np.float64),
+    c.POINTER(c.c_double),
+]
+fn3.pointimplicit_.restype = c.c_void_p
 
 # chemical_database
 
@@ -42,12 +50,11 @@ data_length = np.zeros([1,1])
 dtmp = 0
 counter = 0     # データ数カウンター
 
-for i in range(20):  #質量分率，温度，密度を変化させるループ(base time)
+for i in range(11):  #質量分率，温度，密度を変化させるループ(base time)
 
-    print(dtmp)
     data_length = np.append(data_length,counter)
     t1 = time.time()
-    dtmp = 1300 + float(tcounter*10)
+    dtmp = 1300 + float(tcounter*20)
     #dtmp = 1763 + 100*np.random.rand(1)*-1**tcounter
     #dtmp = 1663 + float(tcounter*10)
     #dprs = 1.01325e5
@@ -98,6 +105,7 @@ for i in range(20):  #質量分率，温度，密度を変化させるループ(
 
             #byrefでポインタにして渡す，mtsの実行
             fn.imtss_(c.byref(dtmp),c.byref(dprs),aYi,c.byref(delt))
+            #fn3.pointimplicit_(c.byref(dtmp),c.byref(dprs),aYi,c.byref(delt))
             dtmp = dtmp.value
             dprs = dprs.value
             delt = delt.value
@@ -124,6 +132,7 @@ for i in range(20):  #質量分率，温度，密度を変化させるループ(
 
         #byrefでポインタにして渡す，mtsの実行
         fn.imtss_(c.byref(dtmp),c.byref(dprs),aYi,c.byref(delt))
+        #fn3.pointimplicit_(c.byref(dtmp),c.byref(dprs),aYi,c.byref(delt))
         dtmp = dtmp.value
         dprs = dprs.value
         delt = delt.value

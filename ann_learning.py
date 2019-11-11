@@ -210,7 +210,7 @@ for i in range(state_num) :
                                             save_best_only=True
     )
     #es_cb = keras.callbacks.EarlyStopping(monitor='val_loss', patience=1000, verbose=1,mode='min')
-    es_cb = keras.callbacks.EarlyStopping(monitor='val_loss', patience=20000, verbose=1,mode='min')
+    es_cb = keras.callbacks.EarlyStopping(monitor='val_loss', patience=1000, verbose=1,mode='min')
     cbks = [tb_cb,cp_cb,es_cb]
     #cbks = [tb_cb]
     ###
@@ -218,7 +218,7 @@ for i in range(state_num) :
 
     #学習実行
     epochs = 20000
-    batch_size = 4096
+    batch_size = 2048
     verbose = 2
     #history = model.fit(train_x,train_y_state,batch_size,epochs,verbose,callbacks=cbks)
     history = model.fit(train_x,train_y_state,batch_size,epochs,verbose,callbacks=cbks,validation_split=0.1)
