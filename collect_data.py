@@ -50,11 +50,11 @@ data_length = np.zeros([1,1])
 dtmp = 0
 counter = 0     # データ数カウンター
 
-for i in range(11):  #質量分率，温度，密度を変化させるループ(base time)
+for i in range(21):  #質量分率，温度，密度を変化させるループ(base time)
 
     data_length = np.append(data_length,counter)
     t1 = time.time()
-    dtmp = 1300 + float(tcounter*20)
+    dtmp = 1300 + float(tcounter*10)
     #dtmp = 1763 + 100*np.random.rand(1)*-1**tcounter
     #dtmp = 1663 + float(tcounter*10)
     #dprs = 1.01325e5

@@ -15,6 +15,7 @@ abspath_length = abspath+ '/learning_data/data_length.npy'
 abspath_model = abspath + '/learned_model/stanford_model.json'
 abspath_eval = abspath + '/output/eval.csv'
 abspath_answer = abspath + '/output/answer.csv'
+abspath_hist = abspath + '/output/time_hist.csv'
 abspath_randt = abspath + '/output/randt.csv'
 print(abspath_x)
 
@@ -86,7 +87,7 @@ train_int_zeros = np.zeros([1,1])
 #dprs = train_x[start,1]
 #dtmp = 1763
 #dprs = 3343232
-dtmp_init = 1500
+dtmp_init = 1355
 dprs_init = 1.01325e5 * 1.5
 aYi_init = train_x[start,2:11]
 train_int_append = np.append(train_int_zeros,dtmp_init)
@@ -160,7 +161,9 @@ dtmp = dtmp_init
 dprs = dprs_init
 aYi  = aYi_init
 delt_mts = 1.e-7
-totaltime = 0
+time_hist_ode = np.zeros([1,1])
+time_hist_pred = np.zeros([1,1])
+t_diff        = np.zeros([1,1])
 
 while (equiv_error > 1.E-4 or dtmp < 2000) :     #時間方向にmts計算を行い訓練データを格納するループ(base timeからの変化)
     #while (aYi[0,2] < 2e-5)
@@ -197,7 +200,8 @@ while (equiv_error > 1.E-4 or dtmp < 2000) :     #時間方向にmts計算を行
     #fn3.pointimplicit_(c.byref(dtmp),c.byref(dprs),aYi,c.byref(delt))
 
     tafter = time.time()
-    totaltime = totaltime + tafter - tbefore
+    t_diff[0,0] = tafter - tbefore
+    time_hist_ode = np.concatenate([time_hist_ode,t_diff],axis=0)
     #------------------------------------
 
     dtmp = dtmp.value
@@ -224,7 +228,6 @@ while (equiv_error > 1.E-4 or dtmp < 2000) :     #時間方向にmts計算を行
 
 train_x = np.delete(train_x,0,0)
 train_y = np.delete(train_y,0,0)
-print('ODE solver time is ', totaltime)
 
 #------------------------------------
 
@@ -235,7 +238,7 @@ print('ODE solver time is ', totaltime)
 #------------------------------------
 #------------------------------------
 
-totaltime = 0
+t_diff[0,0] = 0
 
 #modelの読み込み
 abspath_weight = abspath + '/learned_model/stanford_weight.hdf5'
@@ -255,6 +258,7 @@ train = (train_int_moment - mean_x) / std_x
 
 train_int = train.reshape(1,input_num)
 
+print('FIRST PREDICTION')
 #------------------------------------
 # prediction
 #------------------------------------
@@ -263,7 +267,7 @@ tbefore = time.time()
 eval_moment = model.predict(train_int)
 
 tafter = time.time()
-totaltime = totaltime + tafter - tbefore
+t_diff[0,0] = tafter - tbefore
 #------------------------------------
 
 #data_range = data_length[data_num] - data_length[data_num-1] - 1
@@ -292,7 +296,9 @@ for ii in range(counter) :
     fn2.make_properties_(c.byref(dtmp),c.byref(dprs),aYi,c.byref(totaldens),c.byref(aeng))
 
     tafter = time.time()
-    totaltime = totaltime + tafter - tbefore
+    t_diff[0,0] = t_diff[0,0] + tafter - tbefore
+    time_hist_pred = np.concatenate([time_hist_pred,t_diff],axis=0)
+    t_diff[0,0] = 0
     #------------------------------------
 
     dtmp = dtmp.value
@@ -320,7 +326,7 @@ for ii in range(counter) :
     eval_moment = model.predict(eval_next)
 
     tafter = time.time()
-    totaltime = totaltime + tafter - tbefore
+    t_diff[0,0] = tafter - tbefore
     #------------------------------------
 
 
@@ -356,11 +362,11 @@ for ii in range(counter) :
 #answer_data = answer_moment[0:data_range-start+1,:]
 answer_data = train_y
 ann_data = np.delete(eval_data,0,axis=0)
+time_hist = np.concatenate([time_hist_ode,time_hist_pred],axis=1)
+time_hist = 1000*time_hist # convert to [ms] from [s]
 
-print('evaluation time is', totaltime)
 print('counter is', counter)
 
 np.savetxt(abspath_eval,ann_data,delimiter=',')
-#np.savetxt(abspath_eval,train_data,delimiter=',')
 np.savetxt(abspath_answer,answer_data,delimiter=',')
-#np.savetxt(abspath_randt,train_x,delimiter=',')
+np.savetxt(abspath_hist,time_hist,delimiter=',')

@@ -1,8 +1,8 @@
 file(REMOVE_RECURSE
   "CMakeFiles/Predictor.dir/predict.cpp.o"
   "CMakeFiles/Predictor.dir/tf_utils.cpp.o"
-  "Predictor.pdb"
-  "Predictor"
+  "libPredictor.pdb"
+  "libPredictor.a"
 )
 
 # Per-language clean rules from dependency scanning.

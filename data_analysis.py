@@ -3,7 +3,11 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 import os
+import time
 from sklearn import preprocessing
+#from vtk import *
+import vtk
+from vtk.util.numpy_support import vtk_to_numpy
 
 #パスの指定
 abspath = os.path.dirname(os.path.abspath(__file__))
@@ -14,31 +18,40 @@ abspath_model = abspath + '/learned_model/stanford_model.json'
 abspath_eval = abspath + '/output/x.csv'
 abspath_answer = abspath + '/output/y.csv'
 abspath_randt = abspath + '/output/randt.csv'
+abspath_flow = abspath + '/data/#flow.0103107.vts'
 print(abspath_x)
 
 state_x = np.array(["temp","pres","H2","O2","H","O","OH","H2O","HO2","H2O2","N2","delt"])
 select  = np.array([0,5])
 
-# MTS training dataの読み込み
-#print('train_y',train_y)
-train_x = np.load(abspath_x)
-train_y = np.load(abspath_y)
-np.savetxt(abspath_eval,train_x,delimiter=',')
-#np.savetxt(abspath_eval,train_data,delimiter=',')
-np.savetxt(abspath_answer,train_y,delimiter=',')
-#np.savetxt(abspath_randt,train_x,delimiter=',')
-#train_x = train_x[0:100,select]
-#train_y = train_y[0:100,select]
-#train_x = train_x[:,select]
-#train_y = train_y[:,select]
+# load a vtk file as input
+reader = vtk.vtkXMLStructuredGridReader()
+reader.SetFileName(abspath_flow)
+reader.Update()
 
-#print(train_x[:,0])
-min_x = np.min(train_x,axis=0)
-min_y = np.min(train_y,axis=0)
-max_x = np.max(train_x,axis=0)
-max_y = np.max(train_y,axis=0)
-train_x = (train_x - min_x)/(max_x - min_x)
-train_y = (train_y - min_y)/(max_y - min_y)
+# Get the coordinates of nodes in the mesh
+nodes_vtk_array= reader.GetOutput().GetPoints().GetData()
+
+#The "Temperature" field is the third scalar in my vtk file
+temperature_vtk_array = reader.GetOutput().GetPointData().GetArray('Temperature [K]')
+pressure_vtk_array    = reader.GetOutput().GetPointData().GetArray('Pressure [MPa]')
+H2_vtk_array    = reader.GetOutput().GetPointData().GetArray('  H2')
+
+#Get the coordinates of the nodes and their temperatures
+nodes_nummpy_array = vtk_to_numpy(nodes_vtk_array)
+x,y,z= nodes_nummpy_array[:,0] , nodes_nummpy_array[:,1] , nodes_nummpy_array[:,2]
+
+temperature_np = vtk_to_numpy(temperature_vtk_array)
+pressure_np    = vtk_to_numpy(pressure_vtk_array)
+H2_np    = vtk_to_numpy(pressure_vtk_array)
+
+#make histogram data
+temp_min = np.amin(temperature_np)
+temp_max = np.amax(temperature_np)
+pres_min = np.amin(pressure_np)
+pres_max = np.amax(pressure_np)
+print(temp_min, temp_max, pres_min, pres_max)
+hist_temp = np.histogram(temperature_np,pressure_np,bins=1000,range=[])
 
 #プロット生成
 
@@ -49,16 +62,3 @@ plt.hist(train_x[:,0],bins=200)
 plt.savefig("temp.png")
 plt.close()
 
-# Box-Cox conversion
-
-#pt = preprocessing.PowerTransformer(method='box-cox')
-#train_x = pt.fit_transform(train_x)
-
-#プロット生成
-
-#plt.hist(train_x[:,1],bins=200)
-#plt.savefig("O_boxcox.png")
-#plt.close()
-#plt.hist(train_x[:,0],bins=200)
-#plt.savefig("temp_boxcox.png")
-#plt.close()

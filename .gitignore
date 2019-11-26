@@ -7,3 +7,4 @@
 /ref
 /logs
 /cpp/libtensorflow/*
+/cpp/build/*

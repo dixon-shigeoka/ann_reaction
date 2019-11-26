@@ -15,6 +15,8 @@ abspath_length = abspath+ '/learning_data/data_length.npy'
 abspath_model = abspath + '/learned_model/stanford_model.json'
 abspath_eval = abspath + '/output/eval.csv'
 abspath_answer = abspath + '/output/answer.csv'
+abspath_error = abspath + '/output/error.csv'
+abspath_valid = abspath + '/output/valid.csv'
 abspath_randt = abspath + '/output/randt.csv'
 print(abspath_x)
 
@@ -116,15 +118,21 @@ output_num    = 8
 mts_loop      = 1  #base timeからのmts loopの回数
 data_num      = 1  #train_x中で初期値とする状態量の番号
 start         = 0  #検証を開始するstep数
-num_data      = 20 #教師データの初期条件数
+low_temp      = 1300 #初期温度の最低値
+low_pres      = 1.01325e5 * 1.5 #初期圧力の最低値
+temp_step     = 1  #検証初期温度の間隔 [K]
+pres_step     = 0  #検証初期圧力の間隔 [K]
+iter_data     = 201 #検証の反復回数
 #flag_temp     = 1  #温度用のフラグ
 #flag_pres     = 0  #圧力用のフラグ
 ########
 
 data_counter = 0
-error = np.zeros([num_data*2,2])
+error = np.zeros([iter_data,4])
+all_answer = np.zeros([1,11])
+all_pred   = np.zeros([1,10])
 
-for i in range (num_data*2) :
+for i in range (iter_data) :
 
     print ('eval iteration is ', i)
 
@@ -138,8 +146,8 @@ for i in range (num_data*2) :
     #dtmp = 1763
     #dprs = 3343232
 
-    dtmp_init = 1300 + float(data_counter*12.5)
-    dprs_init = 1.01325e5 * 1.5
+    dtmp_init = low_temp + float(data_counter*temp_step)
+    dprs_init = low_pres + float(data_counter*pres_step)
     data_counter = data_counter + 1
     aYi_init = train_x[start,2:11]
     train_int_append = np.append(train_int_zeros,dtmp_init)
@@ -173,6 +181,10 @@ for i in range (num_data*2) :
     train_y_zeros = np.zeros([1,1])
     train_x = np.zeros([1,12],dtype=float)
     train_y = np.zeros([1,11],dtype=float)
+    ptimp_x_zeros = np.zeros([1,1])
+    ptimp_y_zeros = np.zeros([1,1])
+    ptimp_x = np.zeros([1,12],dtype=float)
+    ptimp_y = np.zeros([1,11],dtype=float)
     equiv_error = 0
     counter = 0
     dtmp = dtmp_init
@@ -233,6 +245,7 @@ for i in range (num_data*2) :
         #omega_ave_data = np.vstack((omega_ave_data,omega_ave))
         #print(train_x_append,dtmp)
 
+        all_answer = np.concatenate([all_answer,train_y_moment],axis=0)
 
         dtmp = train_y_append[1]
         dprs = train_y_append[2]
@@ -245,8 +258,77 @@ for i in range (num_data*2) :
     train_y = np.delete(train_y,0,0)
     #print('ODE solver time is ', totaltime)
 
+
+    #------------------------------------
+    # point implicit
     #------------------------------------
 
+    dtmp = dtmp_init
+    dprs = dprs_init
+    aYi  = aYi_init
+    delt_mts = 1.e-9
+    totaltime = 0
+
+    for pt in range(counter*100+1) :     #時間方向にmts計算を行い訓練データを格納するループ(base timeからの変化)
+        #while (aYi[0,2] < 2e-5)
+
+        delt_mem = 0.e0
+
+        ptimp_x_append = np.append(ptimp_x_zeros,dtmp)
+        ptimp_x_append = np.append(ptimp_x_append,dprs)
+        ptimp_x_append = np.append(ptimp_x_append,aYi)
+
+        #delt_rand = (np.random.rand(1)*0.5 + 0.5)*delt_mts
+        delt_rand = delt_mts
+        delt_mem = delt_mem + delt_rand #このループ内で回った時間
+
+        #入力データを格納
+        temp_before = dtmp
+        ptimp_x_append_in_mtsloop = np.append(ptimp_x_append,delt_mem)
+        ptimp_x_moment = np.delete(ptimp_x_append_in_mtsloop,0,0)
+        ptimp_x_moment = ptimp_x_moment.reshape((1,12))
+        ptimp_x = np.concatenate([ptimp_x,ptimp_x_moment],axis=0)
+
+        dtmp = c.c_double(dtmp)     #ctypes形式でラップ
+        dprs = c.c_double(dprs)
+        delt = c.c_double(delt_mem)
+
+        #------------------------------------
+        # prediction
+        #------------------------------------
+        tbefore = time.time()
+
+        #byrefでポインタにして渡す，mtsの実行
+        #fn.imtss_(c.byref(dtmp),c.byref(dprs),aYi,c.byref(delt))
+        fn3.pointimplicit_(c.byref(dtmp),c.byref(dprs),aYi,c.byref(delt))
+
+        tafter = time.time()
+        totaltime = totaltime + tafter - tbefore
+        #------------------------------------
+
+        dtmp = dtmp.value
+        dprs = dprs.value
+        delt = delt.value
+
+        #MTS結果を教師データとして格納
+        ptimp_y_append = np.append(ptimp_y_zeros,dtmp)
+        ptimp_y_append = np.append(ptimp_y_append,dprs)
+        ptimp_y_append = np.append(ptimp_y_append,aYi)
+        ptimp_y_moment = np.delete(ptimp_y_append,0,0)
+        ptimp_y_moment = ptimp_y_moment.reshape((1,11))
+        ptimp_y = np.concatenate([ptimp_y,ptimp_y_moment],axis=0)
+        #omega_ave_data = np.vstack((omega_ave_data,omega_ave))
+        #print(ptimp_x_append,dtmp)
+
+        dtmp = ptimp_y_append[1]
+        dprs = ptimp_y_append[2]
+        aYi  = ptimp_y_append[3:12]
+
+    ptimp_x = np.delete(ptimp_x,0,0)
+    ptimp_y = np.delete(ptimp_y,0,0)
+    #print('ODE solver time is ', totaltime)
+
+    #------------------------------------
 
     #------------------------------------
     #------------------------------------
@@ -320,6 +402,9 @@ for i in range (num_data*2) :
         eval_moment = np.append(eval_append,aYi)
         eval_moment = np.delete(eval_moment,0,0)
         eval_next = eval_moment.reshape((1,input_num))
+
+        all_pred  = np.concatenate([all_pred,eval_next],axis=0)
+
         eval_data = np.concatenate([eval_data,eval_next],axis=0)
         eval_next = np.log(eval_next)
         eval_next = (eval_next - mean_x) / std_x
@@ -369,24 +454,50 @@ for i in range (num_data*2) :
     #answer_moment = train_y[start+data_length[data_num-1]::mts_loop,:]
     #answer_data = answer_moment[0:data_range-start+1,:]
     answer_data = train_y
+    ptimp_data  = ptimp_y
     ann_data = np.delete(eval_data,0,axis=0)
 
     #print('evaluation time is', totaltime)
     #print('counter is', counter)
-    print(answer_data[-1,0])
-    print(ann_data[-1,0])
+    print(answer_data[-1,:])
+    print(ann_data[-1,:])
+    print(ptimp_data[-1,:])
 
-    total_error = 0
+
+    total_error_Yi = 0
+    total_error_temp = 0
     for iii in range (counter) :
         for iiii in range (8) :
-            total_error = total_error + abs(answer_data[iii,iiii] - ann_data[iii,iiii])
+            total_error_Yi = total_error_Yi + (answer_data[iii,iiii+2] - ann_data[iii,iiii+2])**2
+
+    total_error_Yi = total_error_Yi/counter/8
+
+
+    ode_error_Yi = 0
+    ode_error_temp = 0
+    for iii in range (counter) :
+        for iiii in range (8) :
+            ode_error_Yi = ode_error_Yi + (answer_data[iii,iiii+2] - ptimp_data[iii*100,iiii+2])**2
+
+    ode_error_Yi = ode_error_Yi/counter/8
+    print(ode_error_Yi)
+
+
+    total_error_temp = total_error_temp + abs(answer_data[-1,0] - ann_data[-1,0])
 
     error[i,0] = dtmp_init
     #error[i,0] = dprs_init
-    error[i,1] = total_error
+    error[i,1] = total_error_Yi
+    error[i,2] = total_error_temp
+    error[i,3] = ode_error_Yi
+    print('total_error of Yi is ', total_error_Yi)
+    print('total_error of temp is ', total_error_temp)
 
 
+
+valid = np.concatenate([all_answer,all_pred],axis=1)
+
+np.savetxt(abspath_error,error,delimiter=',')
+np.savetxt(abspath_valid,valid,delimiter=',')
 np.savetxt(abspath_eval,ann_data,delimiter=',')
-#np.savetxt(abspath_eval,train_data,delimiter=',')
 np.savetxt(abspath_answer,answer_data,delimiter=',')
-#np.savetxt(abspath_randt,train_x,delimiter=',')

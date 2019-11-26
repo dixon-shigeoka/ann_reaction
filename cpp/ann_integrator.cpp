@@ -33,7 +33,7 @@ static int displayGraphInfo()
 
 
 
-void ann_integrator(double atmp, double aprs, double aYi[])
+void prediction(double temp, double pres, double aYi[])
 {
     // printf("Hello from TensorFlow C library version %s\n", TF_Version());
 
@@ -66,7 +66,7 @@ void ann_integrator(double atmp, double aprs, double aYi[])
     //                              2.79751332e-14, 4.44049734e-13, 4.72024867e-13,
     //                              5.00000000e-13, 9.16074600e-13, 9.44049734e-13};
 
-    std::vector<double> test_x = {atmp, aprs, aYi}
+    std::vector<double> test_x = {temp, pres, aYi}
 
     // preprocessing for input data //
     for (int i=0; i<test_x.size(); i++){

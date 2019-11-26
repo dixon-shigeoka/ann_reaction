@@ -209,15 +209,15 @@ for i in range(state_num) :
     cp_cb = keras.callbacks.ModelCheckpoint(filepath=abspath_weight, monitor="val_loss", verbose=0,
                                             save_best_only=True
     )
-    #es_cb = keras.callbacks.EarlyStopping(monitor='val_loss', patience=1000, verbose=1,mode='min')
-    es_cb = keras.callbacks.EarlyStopping(monitor='val_loss', patience=1000, verbose=1,mode='min')
+    #es_cb = keras.callbacks.EarlyStopping(monitor='val_loss', patience=200, verbose=1,mode='min')
+    es_cb = keras.callbacks.EarlyStopping(monitor='val_loss', patience=2000, verbose=1,mode='min')
     cbks = [tb_cb,cp_cb,es_cb]
     #cbks = [tb_cb]
     ###
 
 
     #学習実行
-    epochs = 20000
+    epochs = 100000
     batch_size = 2048
     verbose = 2
     #history = model.fit(train_x,train_y_state,batch_size,epochs,verbose,callbacks=cbks)

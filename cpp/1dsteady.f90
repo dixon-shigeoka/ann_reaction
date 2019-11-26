@@ -1,5 +1,5 @@
 program steadystanford
-Use Iso_C_Binding
+use iso_c_binding
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 !
 !     this program is created for estimating detonation profile
@@ -45,19 +45,7 @@ Use Iso_C_Binding
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 !---------------------------------------------------------------------------
-!   for interface to C++
-!---------------------------------------------------------------------------
-
-  interface
-    subroutine ann_integrator(,n) bind(C,Name='integer_cube')
-      import
-      integer(C_int),value :: n
-      integer(C_int),intent(InOut) :: ia(n)
-    end subroutine cube
-  end interface
-
-!---------------------------------------------------------------------------
-!   for initial condition
+!   for nitial condition
 !---------------------------------------------------------------------------
 
   ddgd = 0.d0
@@ -688,6 +676,8 @@ subroutine iintg
 !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
   implicit none
+
+  real(c_double) :: ann_msf(8), ann_temp, ann_pres, temp, pres
   real(8), allocatable :: amsf(:), adns(:), ahhi(:), acpi(:),                 &
   &                       pbbb(:,:), acc(:)
   real(8) :: aerr, arr, amss, ammt, aeng
@@ -712,6 +702,24 @@ subroutine iintg
 !  &             *  dru
 
 !--------------------------------------------------------------------------
+!---------------------------------------------------------------------------
+!   for interface to C++
+!---------------------------------------------------------------------------
+
+  !interface
+  !  subroutine ann_integrator(ann_t,ann_p,ann_m) bind(c,Name='prediction')
+  !    import
+  !    real(c_double), intent(in) :: ann_t, ann_p
+  !    real(c_double), intent(out) :: ann_m(8)
+  !  end subroutine ann_integrator
+  !end interface
+  interface
+    subroutine ann_integrator() bind(c,Name='prediction')
+      import
+    end subroutine ann_integrator
+  end interface
+
+!--------------------------------------------------------------------------
 
   if (bdbg(1:2) == 'on') write(6,*) ' in iintg'
 
@@ -728,9 +736,11 @@ subroutine iintg
 
   case('zn')
 
-!  call isrce (amsf)
-    call ann_integrator(dflw(lt),dflw)
-
+    !  call isrce (amsf)
+    ann_temp = dflw(lt)
+    ann_pres = dflw(lp)
+    !call ann_integrator(ann_temp,ann_pres,ann_msf)
+    call ann_integrator
 
   case('wk')
 
@@ -749,6 +759,7 @@ subroutine iintg
 
 !    if (dmc >= 1.d0+epsl) then
       call isrce(amsf)
+
 !    end if
 
   end select
@@ -791,9 +802,9 @@ subroutine iintg
 !    end if
 
 !    if (dmc >= 1.d0+epsl) then
-      amss = dcnv(lmss) - dflw(lr)*dcvt
-      ammt = dcnv(lmmt) - dflw(lr)*dflw(lu)*dcvt
-      aeng = dcnv(leng)
+    amss = dcnv(lmss) - dflw(lr)*dcvt
+    ammt = dcnv(lmmt) - dflw(lr)*dflw(lu)*dcvt
+    aeng = dcnv(leng)
 !    end if
 
   end select

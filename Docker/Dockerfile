@@ -1,5 +1,6 @@
 #FROM nvidia/cuda:10.1-base-ubuntu16.04
-FROM tensorflow/tensorflow:latest-gpu-py3
+#FROM tensorflow/tensorflow:1.14.0-gpu-py3
+FROM tensorflow/tensorflow:1.14.0-py3
 
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
@@ -13,7 +14,9 @@ RUN apt-get update -y && \
     unzip \
     wget \
     build-essential \
-    zlib1g-dev
+    zlib1g-dev \
+    libgl1-mesa-glx\
+    libsm6
 
 #RUN mkdir -p /usr/src/app
 #WORKDIR /usr/src/app
@@ -29,7 +32,8 @@ RUN pip install \
     keras \
     scipy \
     tqdm \
-    opencv-python
+    opencv-python \
+    vtk
 
 RUN mkdir /root/.keras
 COPY Docker-keras.json /root/.keras/keras.json
@@ -40,6 +44,7 @@ COPY Docker-keras.json /root/.keras/keras.json
 #RUN cd ~/tmp/opencv-3.1.0 && cmake CMakeLists.txt -DWITH_TBB=ON \
 #                                                  -DINSTALL_CREATE_DISTRIB=ON \
 #                                                  -DWITH_FFMPEG=OFF \
+
 #                                                  -DWITH_IPP=OFF \
 #                                                  -DCMAKE_INSTALL_PREFIX=/usr/local
 #RUN cd ~/tmp/opencv-3.1.0 && make -j2 && make install
