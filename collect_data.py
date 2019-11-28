@@ -34,8 +34,8 @@ fn3.pointimplicit_.restype = c.c_void_p
 # chemical_database
 
 aemn = 1.e-12
-delt_base = 1.e-8 # base timeの時間刻み
-delt_mts  = 1.e-7 # mts loopの時間刻み
+delt_base = 7.e-11 # base timeの時間刻み
+delt_mts  = 7.e-12 # mts loopの時間刻み
 range_mts = 1     # mts loopを回す回数
 list_num  = 9     # 要素数
 tcounter  = 0     # 温度を変化させるループのカウンター
@@ -50,11 +50,11 @@ data_length = np.zeros([1,1])
 dtmp = 0
 counter = 0     # データ数カウンター
 
-for i in range(21):  #質量分率，温度，密度を変化させるループ(base time)
+for i in range(45):  #質量分率，温度，密度を変化させるループ(base time)
 
     data_length = np.append(data_length,counter)
     t1 = time.time()
-    dtmp = 1300 + float(tcounter*10)
+    dtmp = 1100 + float(tcounter*25)
     #dtmp = 1763 + 100*np.random.rand(1)*-1**tcounter
     #dtmp = 1663 + float(tcounter*10)
     #dprs = 1.01325e5

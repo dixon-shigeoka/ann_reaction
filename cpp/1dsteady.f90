@@ -706,18 +706,18 @@ subroutine iintg
 !   for interface to C++
 !---------------------------------------------------------------------------
 
-  !interface
-  !  subroutine ann_integrator(ann_t,ann_p,ann_m) bind(c,Name='prediction')
-  !    import
-  !    real(c_double), intent(in) :: ann_t, ann_p
-  !    real(c_double), intent(out) :: ann_m(8)
-  !  end subroutine ann_integrator
-  !end interface
   interface
-    subroutine ann_integrator() bind(c,Name='prediction')
+    subroutine ann_integrator(ann_t,ann_p,ann_m) bind(c,name='prediction')
       import
+      real(c_double), intent(in) :: ann_t, ann_p
+      real(c_double), intent(inout) :: ann_m(8)
     end subroutine ann_integrator
   end interface
+  !interface
+  !  subroutine ann_integrator() bind(c,Name='prediction')
+  !    import
+  !  end subroutine ann_integrator
+  !end interface
 
 !--------------------------------------------------------------------------
 
@@ -739,8 +739,7 @@ subroutine iintg
     !  call isrce (amsf)
     ann_temp = dflw(lt)
     ann_pres = dflw(lp)
-    !call ann_integrator(ann_temp,ann_pres,ann_msf)
-    call ann_integrator
+    call ann_integrator(ann_temp,ann_pres,amsf)
 
   case('wk')
 

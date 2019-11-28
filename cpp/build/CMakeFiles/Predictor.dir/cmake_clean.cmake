@@ -1,5 +1,5 @@
 file(REMOVE_RECURSE
-  "CMakeFiles/Predictor.dir/predict.cpp.o"
+  "CMakeFiles/Predictor.dir/ann_integrator.cpp.o"
   "CMakeFiles/Predictor.dir/tf_utils.cpp.o"
   "libPredictor.pdb"
   "libPredictor.a"

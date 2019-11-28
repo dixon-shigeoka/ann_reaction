@@ -123,32 +123,32 @@ Predictor/fast:
 	$(MAKE) -f CMakeFiles/Predictor.dir/build.make CMakeFiles/Predictor.dir/build
 .PHONY : Predictor/fast
 
-predict.o: predict.cpp.o
+ann_integrator.o: ann_integrator.cpp.o
 
-.PHONY : predict.o
+.PHONY : ann_integrator.o
 
 # target to build an object file
-predict.cpp.o:
-	$(MAKE) -f CMakeFiles/Predictor.dir/build.make CMakeFiles/Predictor.dir/predict.cpp.o
-.PHONY : predict.cpp.o
+ann_integrator.cpp.o:
+	$(MAKE) -f CMakeFiles/Predictor.dir/build.make CMakeFiles/Predictor.dir/ann_integrator.cpp.o
+.PHONY : ann_integrator.cpp.o
 
-predict.i: predict.cpp.i
+ann_integrator.i: ann_integrator.cpp.i
 
-.PHONY : predict.i
+.PHONY : ann_integrator.i
 
 # target to preprocess a source file
-predict.cpp.i:
-	$(MAKE) -f CMakeFiles/Predictor.dir/build.make CMakeFiles/Predictor.dir/predict.cpp.i
-.PHONY : predict.cpp.i
+ann_integrator.cpp.i:
+	$(MAKE) -f CMakeFiles/Predictor.dir/build.make CMakeFiles/Predictor.dir/ann_integrator.cpp.i
+.PHONY : ann_integrator.cpp.i
 
-predict.s: predict.cpp.s
+ann_integrator.s: ann_integrator.cpp.s
 
-.PHONY : predict.s
+.PHONY : ann_integrator.s
 
 # target to generate assembly for a file
-predict.cpp.s:
-	$(MAKE) -f CMakeFiles/Predictor.dir/build.make CMakeFiles/Predictor.dir/predict.cpp.s
-.PHONY : predict.cpp.s
+ann_integrator.cpp.s:
+	$(MAKE) -f CMakeFiles/Predictor.dir/build.make CMakeFiles/Predictor.dir/ann_integrator.cpp.s
+.PHONY : ann_integrator.cpp.s
 
 tf_utils.o: tf_utils.cpp.o
 
@@ -186,9 +186,9 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... edit_cache"
 	@echo "... Predictor"
-	@echo "... predict.o"
-	@echo "... predict.i"
-	@echo "... predict.s"
+	@echo "... ann_integrator.o"
+	@echo "... ann_integrator.i"
+	@echo "... ann_integrator.s"
 	@echo "... tf_utils.o"
 	@echo "... tf_utils.i"
 	@echo "... tf_utils.s"

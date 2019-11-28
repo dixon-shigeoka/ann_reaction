@@ -1,2 +1,2 @@
-/usr/bin/ar qc libPredictor.a  CMakeFiles/Predictor.dir/predict.cpp.o CMakeFiles/Predictor.dir/tf_utils.cpp.o
+/usr/bin/ar qc libPredictor.a  CMakeFiles/Predictor.dir/ann_integrator.cpp.o CMakeFiles/Predictor.dir/tf_utils.cpp.o
 /usr/bin/ranlib libPredictor.a

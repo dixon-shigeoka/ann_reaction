@@ -85,10 +85,9 @@ start         = 0  #検証を開始するstep数
 train_int_zeros = np.zeros([1,1])
 #dtmp = train_x[start,0]
 #dprs = train_x[start,1]
-#dtmp = 1763
-#dprs = 3343232
-dtmp_init = 1355
-dprs_init = 1.01325e5 * 1.5
+dtmp_init = 1763.58641059815
+#dprs_init = 1.01325e5 * 1.5
+dprs_init = 3343232.39720150
 aYi_init = train_x[start,2:11]
 train_int_append = np.append(train_int_zeros,dtmp_init)
 train_int_append = np.append(train_int_append,dprs_init)
@@ -366,6 +365,7 @@ time_hist = np.concatenate([time_hist_ode,time_hist_pred],axis=1)
 time_hist = 1000*time_hist # convert to [ms] from [s]
 
 print('counter is', counter)
+print(answer_data[-1,:])
 
 np.savetxt(abspath_eval,ann_data,delimiter=',')
 np.savetxt(abspath_answer,answer_data,delimiter=',')
