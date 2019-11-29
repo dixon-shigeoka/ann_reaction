@@ -12,8 +12,10 @@ project(1dsteady)
 
 # Create object file without linking
 add_library(Predictor
-    ann_integrator.cpp
-    ann_integrator.hpp
+  ann_integrator.cpp  #for fortran main
+  ann_integrator.hpp
+  #main.cpp               #for c++ main
+  #main.hpp
     tf_utils.cpp
     tf_utils.hpp
 )

@@ -29,6 +29,10 @@ cmath
 -
 tensorflow/c/c_api.h
 -
+time.h
+-
+typeinfo
+-
 tf_utils.hpp
 /home/shigeoka/src/ann_reaction/cpp/tf_utils.hpp
 ann_integrator.hpp

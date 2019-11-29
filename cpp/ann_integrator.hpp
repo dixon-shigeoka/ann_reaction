@@ -1,4 +1,4 @@
 extern "C"
 {
-  void prediction(double temp, double pres, double aYi[]);
+  double prediction(double temp, double pres, double aYi[]);
 }

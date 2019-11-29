@@ -5,7 +5,6 @@
 #include <cmath>
 #include <tensorflow/c/c_api.h>
 #include <time.h>
-#include <typeinfo>
 #include "tf_utils.hpp"
 #include "ann_integrator.hpp"
 
@@ -33,14 +32,11 @@ static int displayGraphInfo()
     return 0;
 }
 
+void run(struct TF_Session sess){
 
-
-double prediction(double temp, double pres, double aYi[])
-//void prediction(double aYi[], double temp, double pres)
+  struct LocalFunc{
+void prediction(double temp, double pres, double aYi[])
 {
-
-    printf("Hello from TensorFlow C library version %s\n", TF_Version());
-
     // read the statistic data from csv files //
     std::ifstream ifs("./resource/statistics.csv");
     std::string line;
@@ -66,15 +62,18 @@ double prediction(double temp, double pres, double aYi[])
     }
 
     // make input vector
-    //std::vector<double> test_x = {1360.0, 151987.5, 1.11900533e-01, 8.88099467e-01,
-    //                              2.79751332e-14, 4.44049734e-13, 4.72024867e-13,
-    //                              5.00000000e-13, 9.16074600e-13, 9.44049734e-13};
+    std::vector<double> test_x = {1360.0, 151987.5, 1.11900533e-01, 8.88099467e-01,
+                                  2.79751332e-14, 4.44049734e-13, 4.72024867e-13,
+                                  5.00000000e-13, 9.16074600e-13, 9.44049734e-13};
+    //std::vector<double> test_x = {temp, pres};
+    //for (int it = 0; it<sizeof(aYi)/sizeof(*aYi); it++){
+    //  test_x[2+it] = aYi[it];
+    //}
 
-    std::cout.precision(17);
-    std::vector<double> test_x = {temp, pres};
-    for (int it = 0; it < 8; it++){
-      test_x.emplace_back(aYi[it]);
-    }
+    //for(int i=0; i<20 ; i++){
+    //  std::cout << test_x[i] << std::endl;
+    //}
+
 
     // preprocessing for input data //
     for (int i=0; i<test_x.size(); i++){
@@ -82,20 +81,67 @@ double prediction(double temp, double pres, double aYi[])
       test_x[i] = (test_x[i] - statistics[0][i]) / statistics[1][i];
     }
 
+  clock_t start = clock();
+
+  for (int count=0; count<1000;count++){
+
+    //std::cout << "Before session run" << std::endl;
+
+    //run session //
+    TF_SessionRun(sess,
+                  nullptr, // Run options.
+                  &input_op, &input_tensor, 1, // Input tensors, input tensor values, number of inputs.
+                  &out_op, &output_tensor, 1, // Output tensors, output tensor values, number of outputs.
+                  nullptr, 0, // Target operations, number of targets.
+                  nullptr, // Run metadata.
+                  status // Output status.
+                  );
+
+    //std::cout << "After session run" << std::endl;
+  }
+  clock_t end = clock();
+  const double time = static_cast<double>(end - start) / CLOCKS_PER_SEC * 1000.0;
+  printf("time %lf[ms]\n", time);
+}
+}
+  // call fortran subroutine
+  main_fortran()
+  //
+
+  //const auto probs = static_cast<double*>(TF_TensorData(output_tensor));
+  //std::cout << TF_TensorData(output_tensor) << std::endl;
+
+  //for (int i = 0; i < 8; i++) {
+  //    printf("prob of %d: %.19lf\n", i, probs[i]);
+  //}
+    return ;
+}
+
+
+int main()
+{
+
+    //printf("Hello from TensorFlow C library version %s\n", TF_Version());
+
+    // make input vector
+  std::vector<double> test_x = {1360.0, 151987.5, 1.11900533e-01, 8.88099467e-01,
+                                2.79751332e-14, 4.44049734e-13, 4.72024867e-13,
+                                5.00000000e-13, 9.16074600e-13, 9.44049734e-13};
+
     // get graph info //
     //displayGraphInfo();
 
     TF_Graph *graph = tf_utils::LoadGraphDef(MODEL_FILENAME);
     if (graph == nullptr) {
         std::cout << "Can't load graph" << std::endl;
-        return 0;
+        return 1;
     }
 
     // prepare input tensor //
     TF_Output input_op = { TF_GraphOperationByName(graph, "dense_1_input"), 0 };
     if (input_op.oper == nullptr) {
         std::cout << "Can't init input_op" << std::endl;
-        return 1;
+        return 2;
     }
 
 
@@ -112,7 +158,7 @@ double prediction(double temp, double pres, double aYi[])
     TF_Output out_op = { TF_GraphOperationByName(graph, "activation_3/Sigmoid"), 0 };
     if (out_op.oper == nullptr) {
         std::cout << "Can't init out_op" << std::endl;
-        return 2;
+        return 3;
     }
 
     TF_Tensor* output_tensor = nullptr;
@@ -125,55 +171,30 @@ double prediction(double temp, double pres, double aYi[])
 
     if (TF_GetCode(status) != TF_OK) {
         TF_DeleteStatus(status);
-        return 3;
+        return 4;
     }
 
-    //clock_t start = clock();
-
-    //for (int count=0; count<1000;count++){
-
-    //run session //
-    TF_SessionRun(sess,
-        nullptr, // Run options.
-        &input_op, &input_tensor, 1, // Input tensors, input tensor values, number of inputs.
-        &out_op, &output_tensor, 1, // Output tensors, output tensor values, number of outputs.
-        nullptr, 0, // Target operations, number of targets.
-        nullptr, // Run metadata.
-        status // Output status.
-    );
-    //}
-    //clock_t end = clock();
-    //const double time = static_cast<double>(end - start) / CLOCKS_PER_SEC * 1000.0;
-    //printf("time %lf[ms]\n", time);
+    run(sess);
 
     if (TF_GetCode(status) != TF_OK) {
       std::cout << TF_GetCode(status) << std::endl;
       std::cout << "Error run session";
       TF_DeleteStatus(status);
-      return 4;
+      return 5;
     }
 
     TF_CloseSession(sess, status);
     if (TF_GetCode(status) != TF_OK) {
         std::cout << "Error close session";
         TF_DeleteStatus(status);
-        return 5;
+        return 6;
     }
 
     TF_DeleteSession(sess, status);
     if (TF_GetCode(status) != TF_OK) {
         std::cout << "Error delete session";
         TF_DeleteStatus(status);
-        return 6;
-    }
-
-    //return probs[];
-    const auto probs = static_cast<double*>(TF_TensorData(output_tensor));
-    std::cout << TF_TensorData(output_tensor) << std::endl;
-
-    for (int i = 0; i < 8; i++) {
-      aYi[i] = probs[i];
-      //printf("prob of %d: %.19lf\n", i, probs[i]);
+        return 7;
     }
 
     TF_DeleteTensor(input_tensor);
@@ -181,4 +202,5 @@ double prediction(double temp, double pres, double aYi[])
     TF_DeleteGraph(graph);
     TF_DeleteStatus(status);
 
+    //return probs[];
 }
