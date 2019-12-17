@@ -1,5 +1,4 @@
 program steadystanford
-use iso_c_binding
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 !
 !     this program is created for estimating detonation profile
@@ -31,7 +30,7 @@ use iso_c_binding
   real(8), save :: dcvt, dcuv, ddltx
   real(8) :: ddgd, au0, dmc
   integer :: jend, lstp, lint
-  character :: bdbg*4, brct*6, btyp*3
+  character :: bdbg*4, brct*5, btyp*3
 
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 !
@@ -219,7 +218,8 @@ subroutine icond
   write(6,*) ' '
   write(6,*) ' : Debug   on / off'
   write(6,*) ' '
-  read(5,'(a)') bdbg
+  !read(5,'(a)') bdbg
+  bdbg = 'off'
 
   if (bdbg(1:2) == 'on') write(6,*) ' Debug on in icond !!'
 
@@ -227,7 +227,12 @@ subroutine icond
 
   write(6,*) ' : Grid width [nm] : End step : interval for output'
   write(6,*) ' '
-  read(5,*) ddltx, jend, lint
+  !read(5,*) ddltx, jend, lint
+
+  ddltx = 0.01d0
+  jend  = 100000000
+  lint  = 140000
+
   if (jend == 0)  jend = jmax
   if (lint == 0)  lint = jend + 2
 
@@ -245,13 +250,18 @@ subroutine icond
   write(6,*) '    H2-N2-He reaction                     (N2He)'
   write(6,*) '    H2-N2-Ar reaction                     (N2Ar)'
   write(6,*) ' '
-  read(5,'(a)')  crct
+  !read(5,'(a)')  crct
 
-  brct(1:3) = '#'//crct(1:2)
-  brct(4:6) = '-'//crct(3:4)
+  crct = 'H2O2'
+
+  brct(1:2) = crct(1:2)
+  brct(3:5) = '-'//crct(3:4)
 
   write(6,*) ' : Choose ZND model(znd) or WK model(wk)'
-  read(5,*)  btyp(1:3)
+  !read(5,*)  btyp(1:3)
+
+  btyp = 'znd'
+
   if(btyp(1:2) == 'wk') then
   write(6,*) ' : The curvature of shock       '
   read(5,*)  dcuv
@@ -310,7 +320,17 @@ subroutine iinit(dflw,dcnv,dmh2,dtime,au0)
   write(6,*) ' '
   write(6,*) ' : mole fraction of H2, O2, H2O, N2'
   write(6,*) ' '
-  read(5,*) amlf(l1), amlf(l2), amlf(l6), amlf(l9)
+  !read(5,*) amlf(l1), amlf(l2), amlf(l6), amlf(l9)
+  amlf(l1) = 2
+  amlf(l2) = 1
+  amlf(l3) = 1.d-12
+  amlf(l4) = 1.d-12
+  amlf(l5) = 1.d-12
+  amlf(l6) = 1.d-12
+  amlf(l7) = 1.d-12
+  amlf(l8) = 1.d-12
+  amlf(l9) = 0.d0
+
   write(6,*) '   mole fraction of H2      : ',amlf(l1)
   write(6,*) '   mole fraction of O2      : ',amlf(l2)
   write(6,*) '   mole fraction of H2O     : ',amlf(l6)
@@ -331,7 +351,18 @@ subroutine iinit(dflw,dcnv,dmh2,dtime,au0)
   write(6,*) ' ** Ref. AISTJAN **'
   write(6,*) '   URL : http://www.aist.go.jp/RIODB/ChemTherm/aistjan-.html'
   write(6,*) ' '
-  read(5,*) at0, ap00, au0
+  !read(5,*) at0, ap00, au0
+
+  write(6,*) 'before open com'
+  open(11,file='com',form='formatted')
+  write(6,*) 'open com'
+  read(11,*) au0
+  close(11)
+
+  write(6,*) 'set veloctity :', au0
+
+  at0 = 298.d0
+  ap00 = 1.d0
 
   ap0 = ap00 * 101325.d0
 
@@ -677,7 +708,7 @@ subroutine iintg
 
   implicit none
 
-  real(c_double) :: ann_msf(8), ann_temp, ann_pres, temp, pres
+  !real(c_double) :: ann_msf(8), ann_temp, ann_pres, temp, pres
   real(8), allocatable :: amsf(:), adns(:), ahhi(:), acpi(:),                 &
   &                       pbbb(:,:), acc(:)
   real(8) :: aerr, arr, amss, ammt, aeng, t1, t2
@@ -706,13 +737,13 @@ subroutine iintg
 !   for interface to C++
 !---------------------------------------------------------------------------
 
-  interface
-    subroutine ann_integrator(ann_t,ann_p,ann_m) bind(c,name='prediction')
-      import
-      real(c_double), intent(in), value :: ann_t, ann_p
-      real(c_double), intent(inout) :: ann_m(8)
-    end subroutine ann_integrator
-  end interface
+  !interface
+  !  subroutine ann_integrator(ann_t,ann_p,ann_m) bind(c,name='prediction')
+  !    import
+  !    real(c_double), intent(in), value :: ann_t, ann_p
+  !    real(c_double), intent(inout) :: ann_m(8)
+  !  end subroutine ann_integrator
+  !end interface
   !interface
   !  subroutine ann_integrator() bind(c,Name='prediction')
   !    import
@@ -736,11 +767,11 @@ subroutine iintg
 
   case('zn')
 
-    !  call isrce (amsf)
-    ann_temp = dflw(lt)
-    ann_pres = dflw(lp)
-    amsf(1:lsp) = dflw(1:lsp)/dflw(lr)
-    call ann_integrator(ann_temp,ann_pres,amsf)
+    call isrce (amsf)
+    !ann_temp = dflw(lt)
+    !ann_pres = dflw(lp)
+    !amsf(1:lsp) = dflw(1:lsp)/dflw(lr)
+    !call ann_integrator(ann_temp,ann_pres,amsf)
 
   case('wk')
 
@@ -1812,11 +1843,11 @@ subroutine ioutp(efile,rmh2)
   write(6,*) ' files are opened !!'
   write(6,*) ' '
 
-  open(10,file=brct(1:6)//'-1', form='formatted')
-  open(11,file=brct(1:6)//'-2', form='formatted')
-  open(12,file=brct(1:6)//'-3', form='formatted')
-  open(13,file=brct(1:6)//'-4', form='formatted')
-  open(14,file=brct(1:6)//'-5', form='formatted')
+  open(10,file='1dsteady.csv', form='formatted')
+  !open(11,file=brct(1:6)//'-2', form='formatted')
+  !open(12,file=brct(1:6)//'-3', form='formatted')
+  !open(13,file=brct(1:6)//'-4', form='formatted')
+  !open(14,file=brct(1:6)//'-5', form='formatted')
 
 
 !--------------------------------------------------------------------------
@@ -1824,11 +1855,11 @@ subroutine ioutp(efile,rmh2)
 !--------------------------------------------------------------------------
 
 
-  write(10,'(6(e13.5))') -1., (dflw(i),i=lr,lp)
-  write(11,'(6(e13.5))') -1., (dflw(i),i=l1,l5)
-  write(12,'(6(e13.5))') -1., (dflw(i),i=l6,l9)
-  write(13,'(6(e13.5))') -1., (dflw(i),i=lh,la)
-  write(14,'(2(e13.5))') -1., rmh2
+  write(10,200) dflw(lt),dflw(lp),dflw(l1),dflw(l2),dflw(l3),dflw(l4),dflw(l5),dflw(l6),dflw(l7),dflw(l8)
+  !write(11,'(6(e13.5))') -1., (dflw(i),i=l1,l5)
+  !write(12,'(6(e13.5))') -1., (dflw(i),i=l6,l9)
+  !write(13,'(6(e13.5))') -1., (dflw(i),i=lh,la)
+  !write(14,'(2(e13.5))') -1., rmh2
 
 
 !--------------------------------------------------------------------------
@@ -1836,11 +1867,11 @@ subroutine ioutp(efile,rmh2)
 !--------------------------------------------------------------------------
 
 
-  write(10,'(6(e13.5))') ddgd, (dflw(i),i=lr,lp)
-  write(11,'(6(e13.5))') ddgd, (dflw(i),i=l1,l5)
-  write(12,'(6(e13.5))') ddgd, (dflw(i),i=l6,l9)
-  write(13,'(6(e13.5))') ddgd, (dflw(i),i=lh,la)
-  write(14,'(3(e13.5))') ddgd, rmh2, dmc
+  write(10,200) dflw(lt),dflw(lp),dflw(l1),dflw(l2),dflw(l3),dflw(l4),dflw(l5),dflw(l6),dflw(l7),dflw(l8)
+  !write(11,'(6(e13.5))') ddgd, (dflw(i),i=l1,l5)
+  !write(12,'(6(e13.5))') ddgd, (dflw(i),i=l6,l9)
+  !write(13,'(6(e13.5))') ddgd, (dflw(i),i=lh,la)
+  !write(14,'(3(e13.5))') ddgd, rmh2, dmc
 
 
 !--------------------------------------------------------------------------
@@ -1856,6 +1887,7 @@ subroutine ioutp(efile,rmh2)
 !--------------------------------------------------------------------------
   end if
 !--------------------------------------------------------------------------
+  200 format(e13.5,9(',',e13.5))
 !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 end subroutine ioutp

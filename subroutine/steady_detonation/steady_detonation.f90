@@ -1,5 +1,5 @@
-program steadystanford
-use iso_c_binding
+!---------------------------------------------------------------------------
+  subroutine main
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 !
 !     this program is created for estimating detonation profile
@@ -23,15 +23,23 @@ use iso_c_binding
   real(8), parameter :: epsl = 1.d-3
   integer, parameter :: jmax = 1000000001
   integer, parameter :: l1=1, l2=2, l3=3, l4=4, l5=5, l6=6, l7=7, l8=8, l9=9, &
-  &                     lfl=3, lsp=9, lh=10, la=11, lr=lsp+1, lu=lsp+2,       &
-  &                     le=lsp+3, lt=lsp+4, lp=lsp+5, lg=lsp+6, imax=lg,      &
-  &                     lmss=1, lmmt=2, leng=3, iplus=3, iimax=imax+iplus
+       &                     lfl=3, lsp=9, lh=10, la=11, lr=lsp+1, lu=lsp+2,       &
+       &                     le=lsp+3, lt=lsp+4, lp=lsp+5, lg=lsp+6, imax=lg,      &
+       &                     lmss=1, lmmt=2, leng=3, iplus=3, iimax=imax+iplus
   real(8), allocatable, save :: dflw(:), dcnv(:), dmh2(:), dtime(:), dml(:),  &
-  &                             dplh(:,:,:)
+       &                             dplh(:,:,:)
   real(8), save :: dcvt, dcuv, ddltx
   real(8) :: ddgd, au0, dmc
   integer :: jend, lstp, lint
   character :: bdbg*4, brct*6, btyp*3
+  !icond
+  character :: crct*4
+  real(8) :: axx
+  integer :: ijj
+  !ioutp
+  real(8), intent(in) :: rmh2
+  integer :: i
+  character :: efile*4
 
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 !
@@ -50,8 +58,84 @@ use iso_c_binding
 
   ddgd = 0.d0
 
-  call icond
+  !---------------------------------------------------------------------------
+  !   for nitial condition
+  !---------------------------------------------------------------------------
 
+  write(6,*) '++++++++++++++++++++++++++++++++++++++++++++++++++++'
+  write(6,*) ' '
+  write(6,*) ' Input : Calculation Condition'
+  write(6,*) ' '
+  write(6,*) ' : Debug   on / off'
+  write(6,*) ' '
+  read(5,'(a)') bdbg
+
+  if (bdbg(1:2) == 'on') write(6,*) ' Debug on in icond !!'
+
+
+
+  write(6,*) ' : Grid width [nm] : End step : interval for output'
+  write(6,*) ' '
+  read(5,*) ddltx, jend, lint
+  if (jend == 0)  jend = jmax
+  if (lint == 0)  lint = jend + 2
+
+  ddltx = ddltx * 1.d-9
+  axx = ddltx * dble(jend-1)
+
+  ijj = int((jend-1) / lint + 1)
+
+
+  write(6,*) ' : Reaction type'
+  write(6,*) '    H2-O2    reaction                     (H2o2)'
+  write(6,*) '    H2-O2-He reaction                     (O2He)'
+  write(6,*) '    H2-O2-Ar reaction                     (O2Ar)'
+  write(6,*) '    H2-N2    reaction                     (H2N2)'
+  write(6,*) '    H2-N2-He reaction                     (N2He)'
+  write(6,*) '    H2-N2-Ar reaction                     (N2Ar)'
+  write(6,*) ' '
+  read(5,'(a)')  crct
+
+  brct(1:3) = '#'//crct(1:2)
+  brct(4:6) = '-'//crct(3:4)
+
+  write(6,*) ' : Choose ZND model(znd) or WK model(wk)'
+  read(5,*)  btyp(1:3)
+  if(btyp(1:2) == 'wk') then
+  write(6,*) ' : The curvature of shock       '
+  read(5,*)  dcuv
+  end if
+  write(6,*) ' '
+  write(6,*) ' model : ',btyp
+  write(6,*) ' the curvature of shock : ',dcuv
+
+  write(6,*) ' '
+  write(6,*) ' -----   Debug               : ', bdbg(1:3)
+  write(6,*) ' -----   Reaction type       : ', crct(1:4)
+  write(6,*) ' '
+  write(6,*) ' -----   End step            : ', jend
+  write(6,*) ' -----   Step interval       : ', lint
+  write(6,*) ' -----   Data number         : ', ijj
+  write(6,*) ' '
+  write(6,*) ' -----   Total grid length   : ', axx,'m'
+  write(6,*) ' -----   Grid width          : ', ddltx,'m'
+  write(6,*) ' '
+
+
+!--------------------------------------------------------------------------
+
+  if (lint < jend + 1) then
+  write(6,*) ' files are opened !!'
+  write(6,*) ' '
+
+  open(10,file=brct(1:6)//'-1', form='formatted')
+  open(11,file=brct(1:6)//'-2', form='formatted')
+  open(12,file=brct(1:6)//'-3', form='formatted')
+  open(13,file=brct(1:6)//'-4', form='formatted')
+  open(14,file=brct(1:6)//'-5', form='formatted')
+  end if
+
+!++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 !---------------------------------------------------------------------------
 !   allocatable
 !---------------------------------------------------------------------------
@@ -59,51 +143,6 @@ use iso_c_binding
   allocate(dflw(imax), dcnv(iplus), dmh2(jmax), dtime(jmax))
 
 !----------------------------------------------------------------------------
-
-  call ispec
-  call iinit(dflw,dcnv,dmh2,dtime,au0)
-  call irhrl(au0)
-
-!---------------------------------------------------------------------------
-!   calculation start
-!---------------------------------------------------------------------------
-
-  do lstp = 1, jend
-
-    if (bdbg(1:2) == 'on') write(6,*) ' in main ',lstp, jend
-
-    ddgd = ddgd + ddltx
-
-    call iintg
-
-    if (mod(lstp,lint) == 0) then
-    call ioutp ('data',dmh2(lstp+2))
- !   write(6,*) dcvt, dcnv(lmss)
-    endif
-
-  end do
-
-  call iehrl
-
-!---------------------------------------------------------------------------
-
-contains
-
-!===========================================================================
-
-subroutine ispec
-
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-!
-!     i(subroutine)-spec(properties of species)
-!
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-  implicit none
-
-!---------------------------------------------------------------------------
-! block data for chemical reaction and thermal properties
-!---------------------------------------------------------------------------
 
   allocate(dml(lsp), dplh(7,lsp,3))
 
@@ -190,6 +229,55 @@ subroutine ispec
   &  0.35d+01, 0.d0, 0.d0, 0.d0, 0.d0, 0.d0, 0.d0                             &
   &  /), (/7,lsp,3/))
 
+!---------------------------------------------------------------------------
+!   calculation start
+!---------------------------------------------------------------------------
+
+!iinit
+  call iinit(dflw,dcnv,dmh2,dtime,au0)
+
+
+
+
+  call irhrl(au0)
+
+  do lstp = 1, jend
+
+    if (bdbg(1:2) == 'on') write(6,*) ' in main ',lstp, jend
+
+    ddgd = ddgd + ddltx
+
+    call iintg
+
+    if (mod(lstp,lint) == 0) then
+    call ioutp ('data',dmh2(lstp+2))
+ !   write(6,*) dcvt, dcnv(lmss)
+    endif
+
+  end do
+
+  call iehrl
+
+!---------------------------------------------------------------------------
+end subroutine main
+
+!===========================================================================
+
+subroutine ispec
+
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!
+!     i(subroutine)-spec(properties of species)
+!
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+  implicit none
+
+!---------------------------------------------------------------------------
+! block data for chemical reaction and thermal properties
+!---------------------------------------------------------------------------
+
+
 
 !--------------------------------------------------------------------------
 
@@ -206,78 +294,15 @@ subroutine icond
 !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
   implicit none
-  character :: crct*4
-  real(8) :: axx
-  integer :: ijj
 
 !------------------------------------------------------------------------
 
 
-  write(6,*) '++++++++++++++++++++++++++++++++++++++++++++++++++++'
-  write(6,*) ' '
-  write(6,*) ' Input : Calculation Condition'
-  write(6,*) ' '
-  write(6,*) ' : Debug   on / off'
-  write(6,*) ' '
-  read(5,'(a)') bdbg
-
-  if (bdbg(1:2) == 'on') write(6,*) ' Debug on in icond !!'
-
-
-
-  write(6,*) ' : Grid width [nm] : End step : interval for output'
-  write(6,*) ' '
-  read(5,*) ddltx, jend, lint
-  if (jend == 0)  jend = jmax
-  if (lint == 0)  lint = jend + 2
-
-  ddltx = ddltx * 1.d-9
-  axx = ddltx * dble(jend-1)
-
-  ijj = int((jend-1) / lint + 1)
-
-
-  write(6,*) ' : Reaction type'
-  write(6,*) '    H2-O2    reaction                     (H2o2)'
-  write(6,*) '    H2-O2-He reaction                     (O2He)'
-  write(6,*) '    H2-O2-Ar reaction                     (O2Ar)'
-  write(6,*) '    H2-N2    reaction                     (H2N2)'
-  write(6,*) '    H2-N2-He reaction                     (N2He)'
-  write(6,*) '    H2-N2-Ar reaction                     (N2Ar)'
-  write(6,*) ' '
-  read(5,'(a)')  crct
-
-  brct(1:3) = '#'//crct(1:2)
-  brct(4:6) = '-'//crct(3:4)
-
-  write(6,*) ' : Choose ZND model(znd) or WK model(wk)'
-  read(5,*)  btyp(1:3)
-  if(btyp(1:2) == 'wk') then
-  write(6,*) ' : The curvature of shock       '
-  read(5,*)  dcuv
-  end if
-  write(6,*) ' '
-  write(6,*) ' model : ',btyp
-  write(6,*) ' the curvature of shock : ',dcuv
-
-  write(6,*) ' '
-  write(6,*) ' -----   Debug               : ', bdbg(1:3)
-  write(6,*) ' -----   Reaction type       : ', crct(1:4)
-  write(6,*) ' '
-  write(6,*) ' -----   End step            : ', jend
-  write(6,*) ' -----   Step interval       : ', lint
-  write(6,*) ' -----   Data number         : ', ijj
-  write(6,*) ' '
-  write(6,*) ' -----   Total grid length   : ', axx,'m'
-  write(6,*) ' -----   Grid width          : ', ddltx,'m'
-  write(6,*) ' '
-
-  if (lint < jend + 1)  call ioutp('open',axx)
 
 !------------------------------------------------------------------------
 !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-end subroutine icond
+end
 
 !========================================================================
 
@@ -677,7 +702,6 @@ subroutine iintg
 
   implicit none
 
-  real(c_double) :: ann_msf(8), ann_temp, ann_pres, temp, pres
   real(8), allocatable :: amsf(:), adns(:), ahhi(:), acpi(:),                 &
   &                       pbbb(:,:), acc(:)
   real(8) :: aerr, arr, amss, ammt, aeng, t1, t2
@@ -706,13 +730,13 @@ subroutine iintg
 !   for interface to C++
 !---------------------------------------------------------------------------
 
-  interface
-    subroutine ann_integrator(ann_t,ann_p,ann_m) bind(c,name='prediction')
-      import
-      real(c_double), intent(in), value :: ann_t, ann_p
-      real(c_double), intent(inout) :: ann_m(8)
-    end subroutine ann_integrator
-  end interface
+  !interface
+  !  subroutine ann_integrator(ann_t,ann_p,ann_m) bind(c,name='prediction')
+  !    import
+  !    real(c_double), intent(in) :: ann_t, ann_p
+  !    real(c_double), intent(inout) :: ann_m(8)
+  !  end subroutine ann_integrator
+  !end interface
   !interface
   !  subroutine ann_integrator() bind(c,Name='prediction')
   !    import
@@ -736,11 +760,10 @@ subroutine iintg
 
   case('zn')
 
-    !  call isrce (amsf)
-    ann_temp = dflw(lt)
-    ann_pres = dflw(lp)
-    amsf(1:lsp) = dflw(1:lsp)/dflw(lr)
-    call ann_integrator(ann_temp,ann_pres,amsf)
+    call isrce (amsf)
+    !ann_temp = dflw(lt)
+    !ann_pres = dflw(lp)
+    !call ann_integrator(ann_temp,ann_pres,amsf)
 
   case('wk')
 
@@ -903,10 +926,6 @@ subroutine iintg
 ! half-reaction time
   adt = ddltx / avel
   dtime(lstp+1) = dtime(lstp) + adt
-
-  if(isnan(addd) .eqv. .true.) then
-    stop '!!DIVERGED!!'
-  end if
 
 !---------------------------------------------------------------------------
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1798,68 +1817,9 @@ subroutine ioutp(efile,rmh2)
 !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
   implicit none
-  real(8), intent(in) :: rmh2
-  integer :: i
-  character :: efile*4
-!--------------------------------------------------------------------------
-
-  if (bdbg(1:2) == 'on') write(6,*) ' in ioutp ', efile(1:4)
-
-!--------------------------------------------------------------------------
-  if (efile(1:4) == 'open') then
-!--------------------------------------------------------------------------
-
-  write(6,*) ' files are opened !!'
-  write(6,*) ' '
-
-  open(10,file=brct(1:6)//'-1', form='formatted')
-  open(11,file=brct(1:6)//'-2', form='formatted')
-  open(12,file=brct(1:6)//'-3', form='formatted')
-  open(13,file=brct(1:6)//'-4', form='formatted')
-  open(14,file=brct(1:6)//'-5', form='formatted')
-
-
-!--------------------------------------------------------------------------
-  elseif (efile(1:4) == 'init') then
-!--------------------------------------------------------------------------
-
-
-  write(10,'(6(e13.5))') -1., (dflw(i),i=lr,lp)
-  write(11,'(6(e13.5))') -1., (dflw(i),i=l1,l5)
-  write(12,'(6(e13.5))') -1., (dflw(i),i=l6,l9)
-  write(13,'(6(e13.5))') -1., (dflw(i),i=lh,la)
-  write(14,'(2(e13.5))') -1., rmh2
-
-
-!--------------------------------------------------------------------------
-  elseif (efile(1:4) == 'data') then
-!--------------------------------------------------------------------------
-
-
-  write(10,'(6(e13.5))') ddgd, (dflw(i),i=lr,lp)
-  write(11,'(6(e13.5))') ddgd, (dflw(i),i=l1,l5)
-  write(12,'(6(e13.5))') ddgd, (dflw(i),i=l6,l9)
-  write(13,'(6(e13.5))') ddgd, (dflw(i),i=lh,la)
-  write(14,'(3(e13.5))') ddgd, rmh2, dmc
-
-
-!--------------------------------------------------------------------------
-  else
-!--------------------------------------------------------------------------
-
-
-  write(6,*) ' argument is error !! ',efile(1:4)
-  write(6,*) ' '
-  stop
-
-
-!--------------------------------------------------------------------------
-  end if
-!--------------------------------------------------------------------------
-!++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 end subroutine ioutp
 
 !==========================================================================
 
-end program steadystanford
+end module steadystanford

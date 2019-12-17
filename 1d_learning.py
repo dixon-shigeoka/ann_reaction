@@ -34,6 +34,7 @@ np.random.seed(seed)
 abspath = os.path.dirname(os.path.abspath(__file__))
 abspath_x = abspath + '/learning_data/train_x.npy'
 abspath_y = abspath + '/learning_data/train_y.npy'
+abspath_1d = abspath + '/learning_data/1dsteady.csv'
 abspath_model = abspath + '/learned_model/stanford_model.json'
 abspath_model_temp = abspath + '/learned_model/temp_model.json'
 abspath_weight_temp = abspath + '/learned_model/temp_weight.hdf5'
@@ -49,17 +50,21 @@ os.mkdir(abspath_weight)
 
 # MTS training dataの読み込み
 #print('train_y',train_y)
-train_x = np.load(abspath_x)
-train_y = np.load(abspath_y)
-state_x = np.array(["temp","pres","H2","O2","H","O","OH","H2O","HO2","H2O2","N2","delt"])
+#train_x = np.load(abspath_x)
+#train_y = np.load(abspath_y)
+train_x = np.loadtxt(abspath_1d,delimiter=',')
+train_y = np.delete(train_x,slice(0,2),1)
+train_x = np.delete(train_x,slice(0,1),0)
+train_x = np.delete(train_x,-1,0)
+train_y = np.delete(train_y,slice(0,2),0)
 
-#訓練データの整形
+state_x = np.array(["temp","pres","H2","O2","H","O","OH","H2O","HO2","H2O2","N2","delt"])
+#train_y = train_y[:,np.array([0,5])] #H mass fraction
 #train_x = np.delete(train_x,10,1) # delete N2 mass fraction
 #train_x = np.delete(train_x,10,1) # delete delt
 #train_y = np.delete(train_y,10,1) # delete N2 mass fraction
 #train_y = np.delete(train_y,0,1) # delete Temperature
 #train_y = np.delete(train_y,0,1) # delete Pressure
-
 print(train_x.shape,train_y.shape)
 
 
@@ -122,8 +127,6 @@ np.savetxt(abspath_std,std_x,delimiter=',')
 
 X = train_x
 Y = train_y
-print(Y)
-
 
 ##自作cost functionの実装
 def loss_log(y_true,y_pred):
@@ -222,7 +225,7 @@ for i in range(state_num) :
 
     #学習実行
     epochs = 100000
-    batch_size = 2048
+    batch_size = 262144
     verbose = 2
     #history = model.fit(train_x,train_y_state,batch_size,epochs,verbose,callbacks=cbks)
     history = model.fit(train_x,train_y_state,batch_size,epochs,verbose,callbacks=cbks,validation_split=0.1)

@@ -1,5 +1,4 @@
 program steadystanford
-use iso_c_binding
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 !
 !     this program is created for estimating detonation profile
@@ -27,11 +26,11 @@ use iso_c_binding
   &                     le=lsp+3, lt=lsp+4, lp=lsp+5, lg=lsp+6, imax=lg,      &
   &                     lmss=1, lmmt=2, leng=3, iplus=3, iimax=imax+iplus
   real(8), allocatable, save :: dflw(:), dcnv(:), dmh2(:), dtime(:), dml(:),  &
-  &                             dplh(:,:,:)
+  &                             dplh(:,:,:), dmlr(:), dmlru(:)
   real(8), save :: dcvt, dcuv, ddltx
   real(8) :: ddgd, au0, dmc
   integer :: jend, lstp, lint
-  character :: bdbg*4, brct*6, btyp*3
+  character :: bdbg*4, brct*5, btyp*3
 
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 !
@@ -105,10 +104,14 @@ subroutine ispec
 ! block data for chemical reaction and thermal properties
 !---------------------------------------------------------------------------
 
-  allocate(dml(lsp), dplh(7,lsp,3))
+  allocate(dml(lsp), dplh(7,lsp,3),dmlr(lsp),dmlru(lsp))
 
   dml(1:lsp) = (/2.016d0,  32.000d0, 1.008d0, 16.000d0, 17.008d0, 18.016d0,     &
   &            33.008d0, 34.016d0, 28.016d0 /)
+
+  ! reciprocal molecular weight
+  dmlr(1:lsp)  = 1.d0/dml(1:lsp)
+  dmlru(1:lsp) = dmlr(1:lsp)*dru
 
   dplh(1:7,1:lsp,1:3) = reshape((/                      &
   ! --  300-1000K --
@@ -219,7 +222,8 @@ subroutine icond
   write(6,*) ' '
   write(6,*) ' : Debug   on / off'
   write(6,*) ' '
-  read(5,'(a)') bdbg
+  !read(5,'(a)') bdbg
+  bdbg = 'off'
 
   if (bdbg(1:2) == 'on') write(6,*) ' Debug on in icond !!'
 
@@ -227,7 +231,12 @@ subroutine icond
 
   write(6,*) ' : Grid width [nm] : End step : interval for output'
   write(6,*) ' '
-  read(5,*) ddltx, jend, lint
+  !read(5,*) ddltx, jend, lint
+
+  ddltx = 0.1d0
+  jend  = 3000000
+  lint  = 1
+
   if (jend == 0)  jend = jmax
   if (lint == 0)  lint = jend + 2
 
@@ -245,13 +254,18 @@ subroutine icond
   write(6,*) '    H2-N2-He reaction                     (N2He)'
   write(6,*) '    H2-N2-Ar reaction                     (N2Ar)'
   write(6,*) ' '
-  read(5,'(a)')  crct
+  !read(5,'(a)')  crct
 
-  brct(1:3) = '#'//crct(1:2)
-  brct(4:6) = '-'//crct(3:4)
+  crct = 'H2O2'
+
+  brct(1:2) = crct(1:2)
+  brct(3:5) = '-'//crct(3:4)
 
   write(6,*) ' : Choose ZND model(znd) or WK model(wk)'
-  read(5,*)  btyp(1:3)
+  !read(5,*)  btyp(1:3)
+
+  btyp = 'znd'
+
   if(btyp(1:2) == 'wk') then
   write(6,*) ' : The curvature of shock       '
   read(5,*)  dcuv
@@ -310,7 +324,23 @@ subroutine iinit(dflw,dcnv,dmh2,dtime,au0)
   write(6,*) ' '
   write(6,*) ' : mole fraction of H2, O2, H2O, N2'
   write(6,*) ' '
-  read(5,*) amlf(l1), amlf(l2), amlf(l6), amlf(l9)
+  !read(5,*) amlf(l1), amlf(l2), amlf(l6), amlf(l9)
+  amlf(l1) = 2
+  amlf(l2) = 1
+  amlf(l3) = 1.d-12
+  amlf(l4) = 1.d-12
+  amlf(l5) = 1.d-12
+  amlf(l6) = 1.d-12
+  amlf(l7) = 1.d-12
+  amlf(l8) = 1.d-12
+  !amlf(l3) = 0.d0
+  !amlf(l4) = 0.d0
+  !amlf(l5) = 0.d0
+  !amlf(l6) = 0.d0
+  !amlf(l7) = 0.d0
+  !amlf(l8) = 0.d0
+  amlf(l9) = 0.d0
+
   write(6,*) '   mole fraction of H2      : ',amlf(l1)
   write(6,*) '   mole fraction of O2      : ',amlf(l2)
   write(6,*) '   mole fraction of H2O     : ',amlf(l6)
@@ -331,7 +361,18 @@ subroutine iinit(dflw,dcnv,dmh2,dtime,au0)
   write(6,*) ' ** Ref. AISTJAN **'
   write(6,*) '   URL : http://www.aist.go.jp/RIODB/ChemTherm/aistjan-.html'
   write(6,*) ' '
-  read(5,*) at0, ap00, au0
+  !read(5,*) at0, ap00, au0
+
+  write(6,*) 'before open com'
+  open(11,file='com',form='formatted')
+  write(6,*) 'open com'
+  read(11,*) au0
+  close(11)
+
+  write(6,*) 'set veloctity :', au0
+
+  at0 = 298.d0
+  ap00 = 1.d0
 
   ap0 = ap00 * 101325.d0
 
@@ -677,7 +718,7 @@ subroutine iintg
 
   implicit none
 
-  real(c_double) :: ann_msf(8), ann_temp, ann_pres, temp, pres
+  !real(c_double) :: ann_msf(8), ann_temp, ann_pres, temp, pres
   real(8), allocatable :: amsf(:), adns(:), ahhi(:), acpi(:),                 &
   &                       pbbb(:,:), acc(:)
   real(8) :: aerr, arr, amss, ammt, aeng, t1, t2
@@ -706,13 +747,13 @@ subroutine iintg
 !   for interface to C++
 !---------------------------------------------------------------------------
 
-  interface
-    subroutine ann_integrator(ann_t,ann_p,ann_m) bind(c,name='prediction')
-      import
-      real(c_double), intent(in), value :: ann_t, ann_p
-      real(c_double), intent(inout) :: ann_m(8)
-    end subroutine ann_integrator
-  end interface
+  !interface
+  !  subroutine ann_integrator(ann_t,ann_p,ann_m) bind(c,name='prediction')
+  !    import
+  !    real(c_double), intent(in), value :: ann_t, ann_p
+  !    real(c_double), intent(inout) :: ann_m(8)
+  !  end subroutine ann_integrator
+  !end interface
   !interface
   !  subroutine ann_integrator() bind(c,Name='prediction')
   !    import
@@ -736,11 +777,14 @@ subroutine iintg
 
   case('zn')
 
-    !  call isrce (amsf)
-    ann_temp = dflw(lt)
-    ann_pres = dflw(lp)
-    amsf(1:lsp) = dflw(1:lsp)/dflw(lr)
-    call ann_integrator(ann_temp,ann_pres,amsf)
+    call isrce_mts (amsf)
+    !call isrce(amsf)
+
+    !write(6,*) amsf(:)
+    !ann_temp = dflw(lt)
+    !ann_pres = dflw(lp)
+    !amsf(1:lsp) = dflw(1:lsp)/dflw(lr)
+    !call ann_integrator(ann_temp,ann_pres,amsf)
 
   case('wk')
 
@@ -904,9 +948,9 @@ subroutine iintg
   adt = ddltx / avel
   dtime(lstp+1) = dtime(lstp) + adt
 
-  if(isnan(addd) .eqv. .true.) then
-    stop '!!DIVERGED!!'
-  end if
+  !if(isnan(addd) .eqv. .true.) then
+  !  stop '!!DIVERGED!!'
+  !end if
 
 !---------------------------------------------------------------------------
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1559,7 +1603,6 @@ subroutine isrce(rmsf)
       &                  -ar14 -ar15 -ar16 -ar17 +ar18 +ar20)
       awh2o2 = dml(8) * (-ar05 -ar06 +ar08 -ar18 -ar19 -ar20)
 
-
 !--------------------------------------------------------------------------
 ! integration for each species
 !--------------------------------------------------------------------------
@@ -1589,6 +1632,7 @@ subroutine isrce(rmsf)
 
       end select
 
+
       asum = 0.
       do i = 1, lsp
         asum = asum + rmsf(i)
@@ -1602,10 +1646,900 @@ subroutine isrce(rmsf)
         rmsf(i) = rmsf(i) / asum
       end do
 
+      write(6,*) rmsf(:)
 !-------------------------------------------------------------------------
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 end subroutine isrce
+
+!==========================================================================
+!=======================================================================
+
+subroutine isrce_mts(rmsf)
+
+!++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!
+!     i(subroutine)-srce(source term)
+!
+!++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+  implicit none
+  real(8), allocatable :: adns(:), rmsf(:), asoi(:), ahhi(:), afm(:)
+  real(8), allocatable :: ab(:)
+  real(8) :: at, afmt, amss, aeng, afdd, afd, af, addd, adt
+  real(8) :: atime, atmp, arho, aflag, art, atmpr, atmpl, aptr, adnsr, arr,   &
+  &          assm, ahsm, asum
+  real(8) :: ar, au, av, awk1, awk2, awk3
+  real(8) :: ae01, ae02h, ae02l, ae03h, ae03l, ae04h, ae04l, ae05h, ae05l,    &
+  &          ae06a, ae06b, ae07, ae08a, ae08b, ae09, ae10, ae11, ae12a, ae12b,&
+  &          ae13, ae14, ae15, ae16, ae17, ae18, ae19, ae20, ae21, ae22, ae23,&
+  &          ae24, ae25, akf01, akf02h, akf02l, akf03h, akf03l, akf04h,       &
+  &          akf04l, akf05h, akf05l, akf06a, akf06b, akf07, akf08a, akf08b,   &
+  &          akf09, akf10, akf11, akf12a, akf12b, akf13, akf14, akf15, akf16, &
+  &          akf17, akf18, akf19, akf20, akf21, akf22, akf23, akf24, akf25,   &
+  &          ah2, ao2, ah, ao, aoh, ah2o, aho2, ah2o2, an2, am04, am05, am09, &
+  &          am21, am23, am24, am25, atrp, atrpl, atra, atrb,                 &
+  &          atrf, akf02, akf03, akf04, akf05, akf06, akf08, akf12, as1, as2, &
+  &          as3, as4, as5, as6, as7, as8, acon, ah1,  ah3, ah4, ah5, ah6,    &
+  &          ah7, ah8, apt, ag, ahh01, ahh02, ahh03, ahh04, ahh05, ahh06,     &
+  &          ahh07, ahh08, ahh09, ahh10, ahh11, ahh12, ahh13, ahh14, ahh15,   &
+  &          ahh16, ahh17, ahh18, ahh19, ahh20, ahh21, ahh22, ahh23, ahh24,   &
+  &          ahh25, akb01, akb02, akb03, akb04, akb05, akb06, akb07, akb08,   &
+  &          akb09, akb10, akb11, akb12, akb13, akb14, akb15, akb16, akb17,   &
+  &          akb18, akb19, akb20, akb21, akb22, akb23, akb24, akb25, akfc01,  &
+  &          akfc02, akfc03, akfc04, akfc05, akfc06, akfc07, akfc08, akfc09,  &
+  &          akfc10, akfc11, akfc12, akfc13, akfc14, akfc15, akfc16, akfc17,  &
+  &          akfc18, akfc19, akfc20, akfc21, akfc22, akfc23, akfc24, akfc25,  &
+  &          akbc01, akbc02, akbc03, akbc04, akbc05, akbc06, akbc07, akbc08,  &
+  &          akbc09, akbc10, akbc11, akbc12, akbc13, akbc14, akbc15, akbc16,  &
+  &          akbc17, akbc18, akbc19, akbc20, akbc21, akbc22, akbc23, akbc24,  &
+  &          akbc25, ar01, ar02, ar03, ar04, ar05, ar06, ar07, ar08, ar09,    &
+  &          ar10, ar11, ar12, ar13, ar14, ar15, ar16, ar17, ar18, ar19, ar20,&
+  &          ar21, ar22, ar23, ar24, ar25, awh2, awo2, awh, awo, awoh, awh2o, &
+  &          awho2, awh2o2, ath2, ato2, ath, ato, atoh, ath2o, atho2, ath2o2, &
+  &          afg, adlt, adlt1, adlt2, asgm, atmx, aaa, abb, ajcb, aflgm1,     &
+  &          aflgm2, aflgm3, aflgm4, aflgm5, aflgm6, aflgm7, aflgm8, delt
+
+  integer :: i, j, k, itm, m, iflg
+!parameter for NASA Polynomials
+  real(8), parameter :: a12  = 1.d0/2.d0
+  real(8), parameter :: a13  = 1.d0/3.d0
+  real(8), parameter :: a14  = 1.d0/4.d0
+  real(8), parameter :: a15  = 1.d0/5.d0
+! number of reaction constant
+  integer, parameter :: lnr = 32
+! constant parameter
+  real(8), parameter :: arc = 1.9872d0, arp = 82.06d0
+  real(8), parameter :: arcr = 1.d0 / arc
+  real(8), parameter :: arur = 1.d0 / dru
+! limiter
+  real(8), parameter :: aemn = -130.d0, aemx = 130.d0
+  real(8), parameter :: akmn = 1.d-35, akmx = 1.d+35
+! MTS limiter
+  real(8), parameter :: aber = 1.d-13, arer = 1.d-5
+  real(8), parameter :: aeps = 1.d-35, atmn = 1.d-12
+! reaction frozen temperature
+  real(8), parameter :: a400 = 400.d0
+  real(8), parameter :: aerr = 1.d-12
+  integer, parameter :: itr = 10 ! number of iteration in Newton method
+!
+! constant parameter for Troe (for reduction)
+  real(8), parameter :: atrc8 =  -0.4d0 - 0.67d0*log10(0.8d0)
+  real(8), parameter :: atrn8 = 0.75d0 - 1.27d0*log10(0.8d0)
+  real(8), parameter :: atrc7 = -0.4d0 - 0.67d0*log10(0.7d0)
+  real(8), parameter :: atrn7 = 0.75d0 - 1.27d0*log10(0.7d0)
+
+! reaction parameter for stanford model
+  real(8), parameter :: acf(1:lnr) = (/ 1.04d+14, 5.59d+13, 3.70d+19,         &
+  &                                     5.59d+13, 5.69d+18, 5.59d+13,         &
+  &                                     2.65d+19, 8.59d+14, 9.55d+15,         &
+  &                                     1.74d+12, 7.59d+13, 2.89d+13,         &
+  &                                     1.30d+11, 4.20d+14, 6.06d+27,         &
+  &                                     1.00d+26, 3.57d+4,  3.82d+12,         &
+  &                                     8.79d+14, 2.17d+8,  7.08d+13,         &
+  &                                     1.45d+12, 3.66d+6,  1.63d+13,         &
+  &                                     1.21d+7,  1.02d+13, 8.43d+11,         &
+  &                                     5.84d+18, 9.03d+14, 4.58d+19,         &
+  &                                     6.16d+15, 4.71d+18 /)
+  real(8), parameter :: ant(1:lnr) = (/ 0.0d0,  0.2d0, -1.0d0,  0.2d0,        &
+  &                                    -1.1d0,  0.2d0, -1.3d0,  0.0d0,        &
+  &                                     0.0d0,  0.0d0,  0.0d0,  0.0d0,        &
+  &                                     0.0d0,  0.0d0,-3.31d0,-2.44d0,        &
+  &                                     2.4d0,  0.0d0,  0.0d0, 1.52d0,        &
+  &                                     0.0d0,  0.0d0,2.087d0,  0.0d0,        &
+  &                                     2.0d0,  0.0d0,  0.0d0, -1.1d0,        &
+  &                                     0.0d0, -1.4d0, -0.5d0, -1.0d0 /)
+  real(8), parameter :: aea(1:lnr) = (/ 15286d0,  0.0d0,   0.0d0,  0.0d0,     &
+  &                                       0.0d0,  0.0d0,   0.0d0,48560d0,     &
+  &                                     42203d0,  318d0,  7269d0, -500d0,     &
+  &                                     -1603d0,11980d0,120770d0,120160d0,    &
+  &                                     -2111d0, 7948d0, 19170d0,  3457d0,    &
+  &                                       300d0,  0.0d0, -1450d0, -445d0,     &
+  &                                      5200d0, 3577d0, 3970d0,104380d0,     &
+  &                                     96070d0,104380d0, 0.0d0,  0.0d0 /)
+
+!--------------------------------------------------------------------------
+!
+!///////////////////////////////////////////////////////////////////////
+!//////////////////////  stanford reaction model   /////////////////////
+!///////////////////////////////////////////////////////////////////////
+!
+!        1 :  h    + o2         = oh   + o
+!        2 :  h    + o2   + h2o = ho2  + h2o        !pressure-dependent
+!        3 :  h    + o2   + o2  = ho2  + o2         !pressure-dependent
+!        4 :  h    + o2   + M   = ho2  + M          !pressure-dependent
+!        5 :  h2o2        + M   = 2oh  + M          !pressure-dependent
+!        6 :  oh   + h2o2       = h2o  + ho2        !non-Arrhenius
+!        7 :  oh   + ho2        = h2o  + o2
+!        8 :  ho2  + ho2        = h2o2 + o2         !non-Arrhenius
+!        9 :  h2o         + M   = h    + oh  + M
+!        10:  h2o         + h2o = oh   + h   + h2o
+!        11:  oh   + oh         = h2o  + o
+!        12:  o    + h2         = h    + oh         !non-Arrhenius
+!        13:  h2   + oh         = h2o  + h
+!        14:  h    + ho2        = oh   + oh
+!        15:  h    + ho2        = h2o  + o
+!        16:  h    + ho2        = h2   + o2
+!        17:  o    + ho2        = oh   + o2
+!        18:  h2o2 + h          = ho2  + h2
+!        19:  h2o2 + h          = h2o  + oh
+!        20:  h2o2 + o          = oh   + ho2
+!        21:  h2          + M   = h    + h   + M
+!        22:  h2          + h2  = h    + h   + h2
+!        23:  h2          + M   = h2         + M
+!        24:  o    + o    + M   = o2         + M
+!        25:  o    + h    + M   = oh         + M
+!
+!///////////////////////////////////////////////////////////////////////
+!///////////////////////////////////////////////////////////////////////
+!
+!
+!--------------------------------------------------------------------------
+!     if (bdbg(1:2) == 'on') write(lwrt,*) ' in isrce '
+!--------------------------------------------------------------------------
+
+! allocate
+  allocate(adns(lsp),asoi(lsp),ahhi(lsp),afm(lsp),ab(6))
+
+  do i = 1, lsp
+    rmsf(i) = dflw(i) / dflw(lr)
+    adns(i) = dflw(i)
+  end do
+
+  arho = dflw(lr)
+  addd = dflw(lr)
+  atmp = dflw(lt)
+  arr  = dflw(lg)
+  au   = dcnv(lmss)/dflw(lr)
+  aeng = (0.5d0*(dflw(lr)*(dflw(lu)*dflw(lu))) - dflw(le))
+  delt = ddltx
+  atime = 0.d0
+  ! flag for frozen species :: aflgmi (i species)
+  aflag = a05 + sign(a05,(atmp - a400))
+  aflgm1 = 1.d0 * aflag
+  aflgm2 = 1.d0 * aflag
+  aflgm3 = 1.d0 * aflag
+  aflgm4 = 1.d0 * aflag
+  aflgm5 = 1.d0 * aflag
+  aflgm6 = 1.d0 * aflag
+  aflgm7 = 1.d0 * aflag
+  aflgm8 = 1.d0 * aflag
+
+!--------------------------------------------------------------------------
+
+  do m = 1, 1000000    !MTS loop
+    art = 1.d0 / (arc*atmp)
+
+!    [Ea/R]  activation energy
+
+      ae01   = min(aemx,max(aemn,-aea( 1)*art))
+      ae02h  = min(aemx,max(aemn,-aea( 2)*art))
+      ae02l  = min(aemx,max(aemn,-aea( 3)*art))
+      ae03h  = min(aemx,max(aemn,-aea( 4)*art))
+      ae03l  = min(aemx,max(aemn,-aea( 5)*art))
+      ae04h  = min(aemx,max(aemn,-aea( 6)*art))
+      ae04l  = min(aemx,max(aemn,-aea( 7)*art))
+      ae05h  = min(aemx,max(aemn,-aea( 8)*art))
+      ae05l  = min(aemx,max(aemn,-aea( 9)*art))
+      ae06a  = min(aemx,max(aemn,-aea(10)*art))
+      ae06b  = min(aemx,max(aemn,-aea(11)*art))
+      ae07   = min(aemx,max(aemn,-aea(12)*art))
+      ae08a  = min(aemx,max(aemn,-aea(13)*art))
+      ae08b  = min(aemx,max(aemn,-aea(14)*art))
+      ae09   = min(aemx,max(aemn,-aea(15)*art))
+      ae10   = min(aemx,max(aemn,-aea(16)*art))
+      ae11   = min(aemx,max(aemn,-aea(17)*art))
+      ae12a  = min(aemx,max(aemn,-aea(18)*art))
+      ae12b  = min(aemx,max(aemn,-aea(19)*art))
+      ae13   = min(aemx,max(aemn,-aea(20)*art))
+      ae14   = min(aemx,max(aemn,-aea(21)*art))
+      ae15   = min(aemx,max(aemn,-aea(22)*art))
+      ae16   = min(aemx,max(aemn,-aea(23)*art))
+      ae17   = min(aemx,max(aemn,-aea(24)*art))
+      ae18   = min(aemx,max(aemn,-aea(25)*art))
+      ae19   = min(aemx,max(aemn,-aea(26)*art))
+      ae20   = min(aemx,max(aemn,-aea(27)*art))
+      ae21   = min(aemx,max(aemn,-aea(28)*art))
+      ae22   = min(aemx,max(aemn,-aea(29)*art))
+      ae23   = min(aemx,max(aemn,-aea(30)*art))
+      ae24   = min(aemx,max(aemn,-aea(31)*art))
+      ae25   = min(aemx,max(aemn,-aea(32)*art))
+
+!    [kf] forward reaction rate constant
+!      Arrhenius's form : kf=AT**n exp(-Ea/RT)
+
+      akf01  = acf( 1)*atmp**ant( 1)*exp(ae01)
+      akf02h = acf( 2)*atmp**ant( 2)*exp(ae02h)
+      akf02l = acf( 3)*atmp**ant( 3)*exp(ae02l)
+      akf03h = acf( 4)*atmp**ant( 4)*exp(ae03h)
+      akf03l = acf( 5)*atmp**ant( 5)*exp(ae03l)
+      akf04h = acf( 6)*atmp**ant( 6)*exp(ae04h)
+      akf04l = acf( 7)*atmp**ant( 7)*exp(ae04l)
+      akf05h = acf( 8)*atmp**ant( 8)*exp(ae05h)
+      akf05l = acf( 9)*atmp**ant( 9)*exp(ae05l)
+      akf06a = acf(10)*atmp**ant(10)*exp(ae06a)
+      akf06b = acf(11)*atmp**ant(11)*exp(ae06b)
+      akf07  = acf(12)*atmp**ant(12)*exp(ae07)
+      akf08a = acf(13)*atmp**ant(13)*exp(ae08a)
+      akf08b = acf(14)*atmp**ant(14)*exp(ae08b)
+      akf09  = acf(15)*atmp**ant(15)*exp(ae09)
+      akf10  = acf(16)*atmp**ant(16)*exp(ae10)
+      akf11  = acf(17)*atmp**ant(17)*exp(ae11)
+      akf12a = acf(18)*atmp**ant(18)*exp(ae12a)
+      akf12b = acf(19)*atmp**ant(19)*exp(ae12b)
+      akf13  = acf(20)*atmp**ant(20)*exp(ae13)
+      akf14  = acf(21)*atmp**ant(21)*exp(ae14)
+      akf15  = acf(22)*atmp**ant(22)*exp(ae15)
+      akf16  = acf(23)*atmp**ant(23)*exp(ae16)
+      akf17  = acf(24)*atmp**ant(24)*exp(ae17)
+      akf18  = acf(25)*atmp**ant(25)*exp(ae18)
+      akf19  = acf(26)*atmp**ant(26)*exp(ae19)
+      akf20  = acf(27)*atmp**ant(27)*exp(ae20)
+      akf21  = acf(28)*atmp**ant(28)*exp(ae21)
+      akf22  = acf(29)*atmp**ant(29)*exp(ae22)
+      akf23  = acf(30)*atmp**ant(30)*exp(ae23)
+      akf24  = acf(31)*atmp**ant(31)*exp(ae24)
+      akf25  = acf(32)*atmp**ant(32)*exp(ae25)
+
+!-----------------------------------------------------------------------
+! mole density
+!-----------------------------------------------------------------------
+
+      ah2   = adns(1) / dml(1)
+      ao2   = adns(2) / dml(2)
+      ah    = adns(3) / dml(3)
+      ao    = adns(4) / dml(4)
+      aoh   = adns(5) / dml(5)
+      ah2o  = adns(6) / dml(6)
+      aho2  = adns(7) / dml(7)
+      ah2o2 = adns(8) / dml(8)
+      an2   = adns(9) / dml(9)
+
+! third body
+
+      am04  = ah2*1.5  +ao2*0.0  +ah  +ao  +aoh  +ah2o*0.0  +aho2             &
+      &       + ah2o2    +an2
+      am05  = ah2      +ao2      +ah  +ao  +aoh  +ah2o*9.0  +aho2             &
+      &       + ah2o2    +an2*1.5
+      am09  = ah2*3.0  +ao2*1.5  +ah  +ao  +aoh  +ah2o*0.0  +aho2          &
+      &       + ah2o2    +an2*2.0
+      am21  = ah2*0.0  +ao2*0.0  +ah  +ao  +aoh  +ah2o*14.4 +aho2             &
+      &       + ah2o2    +an2*0.0
+      am23  = ao2      +an2
+      am24  = ah2*2.5  +ao2      +ah  +ao  +aoh  +ah2o*12   +aho2             &
+      &       + ah2o2    +an2
+      am25  = ah2*2.5  +ao2      +ah  +ao  +aoh  +ah2o*12   +aho2             &
+      &       + ah2o2    +an2
+
+!-----------------------------------------------------------
+!  the reaction rate constant of #02
+!-----------------------------------------------------------
+
+      atrp = akf02l*ah2o*1.0e-3/akf02h
+
+!      atrc = -0.4 - 0.67*log10(0.8)
+!      atrn = 0.75 - 1.27*log10(0.8)
+
+      atrpl= log10(atrp+1.0e-30)
+      atra = (atrpl+atrc8)/(atrn8-0.14*(atrpl+atrc8))
+      atrb = 1.0/(1.0 + atra*atra)
+      atrf = 0.8**atrb
+
+      akf02 = akf02h*atrp/(1.0+atrp)*atrf
+!----------------------------------------------------------
+!  the reaction rate constant of #03
+!----------------------------------------------------------
+
+      atrp = akf03l*ao2*1.0e-3/akf03h
+
+!      atrc = -0.4 - 0.67*log10(0.7)
+!      atrn = 0.75 - 1.27*log10(0.7)
+
+      atrpl= log10(atrp+1.0e-30)
+      atra = (atrpl+atrc7)/(atrn7-0.14*(atrpl+atrc7))
+      atrb = 1.0/(1.0 + atra*atra)
+      atrf = 0.7**atrb
+
+      akf03 = akf03h*atrp/(1.0+atrp)*atrf
+
+!----------------------------------------------------------
+!  the reaction rate constant of #04
+!----------------------------------------------------------
+
+      atrp = akf04l*am04*1.0e-3/akf04h
+
+!      atrc = -0.4 - 0.67*log10(0.7)
+!      atrn = 0.75 - 1.27*log10(0.7)
+
+      atrpl= log10(atrp+1.0e-30)
+      atra = (atrpl+atrc7)/(atrn7-0.14*(atrpl+atrc7))
+      atrb = 1.0/(1.0 + atra*atra)
+      atrf = 0.7**atrb
+
+      akf04 = akf04h*atrp/(1.0+atrp)*atrf
+
+!----------------------------------------------------------
+!  the reaction rate constant of #05
+!----------------------------------------------------------
+
+      atrp = akf05l*am05*1.0e-3/akf05h
+
+!      atrc = -0.4 - 0.67*log10(0.8)
+!      atrn = 0.75 - 1.27*log10(0.8)
+!
+!      atrpl= log10(atrp)
+!      atra = (atrpl+atrc8)/(atrn8-0.14*(atrpl+atrc8))
+!      atrb = 1.0/(1.0 + atra*atra)
+!      atrf = 0.7**atrb
+!
+!      akf05 = akf05h*atrp/(1.0+atrp)*atrf
+      akf05 = akf05h*atrp/(1.0+atrp)
+
+!-----------------------------------------------------------
+!  the reaction rate constant of #06 & #08 & #12
+!-----------------------------------------------------------
+
+      akf06 = akf06a + akf06b
+      akf08 = akf08a + akf08b
+      akf12 = akf12a + akf12b
+
+!------------------------------------------------------------
+!    [kb] backward reaction rate constant
+!------------------------------------------------------------
+
+      iflg = 1 + int(a05 + sign(a05,(atmp-dplt)))
+
+! entropy
+
+      call ithmc('ss',adns,addd,atmp,arr,iflg,assm,asoi)
+
+      as1 = asoi(1)
+      as2 = asoi(2)
+      as3 = asoi(3)
+      as4 = asoi(4)
+      as5 = asoi(5)
+      as6 = asoi(6)
+      as7 = asoi(7)
+      as8 = asoi(8)
+
+! enthalpy
+
+      call ithmc('hh',adns,addd,atmp,arr,iflg,ahsm,ahhi)
+
+      acon = 1.d0 / (dru*atmp)
+      ah1 = ahhi(1)*dml(1)*acon
+      ah2 = ahhi(2)*dml(2)*acon
+      ah3 = ahhi(3)*dml(3)*acon
+      ah4 = ahhi(4)*dml(4)*acon
+      ah5 = ahhi(5)*dml(5)*acon
+      ah6 = ahhi(6)*dml(6)*acon
+      ah7 = ahhi(7)*dml(7)*acon
+      ah8 = ahhi(8)*dml(8)*acon
+
+
+
+      apt = arp*atmp
+!..01
+      ahh01 = ah5+ah4-ah3-ah2
+      ag    = (as5+as4-as3-as2)-ahh01
+      akb01 = akf01/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))))
+!..02
+      ahh02 = ah7    -ah3-ah2
+      ag    = (as7    -as3-as2)-ahh02
+      akb02 = akf02/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))             &
+      &       * apt))
+!..03
+      ahh03 = ah7    -ah3-ah2
+      ag    = (as7    -as3-as2)-ahh03
+      akb03 = akf03/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))             &
+      &       * apt))
+!..04
+      ahh04 = ah7    -ah3-ah2
+      ag    = (as7   -as3-as2)-ahh04
+      akb04 = akf04/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))             &
+      &       * apt))
+!..05
+      ahh05 = ah5+ah5    -ah8
+      ag    = (as5+as5    -as8)-ahh05
+      akb05 = akf05/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))             &
+      &       / apt))
+!..06
+      ahh06 = ah6+ah7-ah5-ah8
+      ag    = (as6+as7-as5-as8)-ahh06
+      akb06 = akf06/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))))
+!..07
+      ahh07 = ah6+ah2-ah5-ah7
+      ag    = (as6+as2-as5-as7)-ahh07
+      akb07 = akf07/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))))
+!..08
+      ahh08 = ah8+ah2-ah7-ah7
+      ag    = (as8+as2-as7-as7)-ahh08
+      akb08 = akf08/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))))
+!..09
+      ahh09 = ah3+ah5    -ah6
+      ag    = (as3+as5    -as6)-ahh09
+      akb09 = akf09/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))             &
+      &       / apt))
+!..10
+      ahh10 = ah5+ah3    -ah6
+      ag    = (as5+as3    -as6)-ahh10
+      akb10 = akf10/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))             &
+      &       / apt))
+!..11
+      ahh11 = ah6+ah4-ah5-ah5
+      ag    = (as6+as4-as5-as5)-ahh11
+      akb11 = akf11/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))))
+!..12
+      ahh12 = ah3+ah5-ah4-ah1
+      ag    = (as3+as5-as4-as1)-ahh12
+      akb12 = akf12/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))))
+!..13
+      ahh13 = ah6+ah3-ah1-ah5
+      ag    = (as6+as3-as1-as5)-ahh13
+      akb13 = akf13/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))))
+!..14
+      ahh14 = ah5+ah5-ah3-ah7
+      ag    = (as5+as5-as3-as7)-ahh14
+      akb14 = akf14/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))))
+!..15
+      ahh15 = ah6+ah4-ah3-ah7
+      ag    = (as6+as4-as3-as7)-ahh15
+      akb15 = akf15/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))))
+!..16
+      ahh16 = ah1+ah2-ah3-ah7
+      ag    = (as1+as2-as3-as7)-ahh16
+      akb16 = akf16/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))))
+!..17
+      ahh17 = ah5+ah2-ah4-ah7
+      ag    = (as5+as2-as4-as7)-ahh17
+      akb17 = akf17/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))))
+!..18
+      ahh18 = ah7+ah1-ah8-ah3
+      ag    = (as7+as1-as8-as3)-ahh18
+      akb18 = akf18/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))))
+!..19
+      ahh19 = ah6+ah5-ah8-ah3
+      ag    = (as6+as5-as8-as3)-ahh19
+      akb19 = akf19/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))))
+!..20
+      ahh20 = ah5+ah7-ah8-ah4
+      ag    = (as5+as7-as8-as4)-ahh20
+      akb20 = akf20/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))))
+!..21
+      ahh21 = ah3+ah3    -ah1
+      ag    = (as3+as3    -as1)-ahh21
+      akb21 = akf21/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))             &
+      &       / apt))
+!..22
+      ahh22 = ah3+ah3    -ah1
+      ag    = (as3+as3    -as1)-ahh22
+      akb22 = akf22/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))             &
+      &       / apt))
+!..23
+      ahh23 = ah3+ah3    -ah1
+      ag    = (as3+as3    -as1)-ahh23
+      akb23 = akf23/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))             &
+      &       / apt))
+!..24
+      ahh24 = ah2    -ah4-ah4
+      ag    = (as2    -as4-as4)-ahh24
+      akb24 = akf24/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))             &
+      &       * apt))
+!..25
+      ahh25 = ah5    -ah4-ah3
+      ag    = (as5    -as4-as3)-ahh25
+      akb25 = akf25/min(akmx,max(akmn,exp(max(aemn,min(ag,aemx)))             &
+      &       * apt))
+
+!------------------------------------------------------------
+
+      akf01 = akf01 * 1.e-3
+      akf02 = akf02 * 1.e-3
+      akf03 = akf03 * 1.e-3
+      akf04 = akf04 * 1.e-3
+!         akf05 = akf05 * 1.e-3
+      akf06 = akf06 * 1.e-3
+      akf07 = akf07 * 1.e-3
+      akf08 = akf08 * 1.e-3
+      akf09 = akf09 * 1.e-3
+      akf10 = akf10 * 1.e-3
+      akf11 = akf11 * 1.e-3
+      akf12 = akf12 * 1.e-3
+      akf13 = akf13 * 1.e-3
+      akf14 = akf14 * 1.e-3
+      akf15 = akf15 * 1.e-3
+      akf16 = akf16 * 1.e-3
+      akf17 = akf17 * 1.e-3
+      akf18 = akf18 * 1.e-3
+      akf19 = akf19 * 1.e-3
+      akf20 = akf20 * 1.e-3
+      akf21 = akf21 * 1.e-3
+      akf22 = akf22 * 1.e-3
+      akf23 = akf23 * 1.e-3
+      akf24 = akf24 * 1.e-6
+      akf25 = akf25 * 1.e-6
+
+      akb01 = akb01 * 1.e-3
+!      akb02 = akb02 * 1.e-3
+!      akb03 = akb03 * 1.e-3
+!      akb04 = akb04 * 1.e-3
+      akb05 = akb05 * 1.e-3
+      akb06 = akb06 * 1.e-3
+      akb07 = akb07 * 1.e-3
+      akb08 = akb08 * 1.e-3
+      akb09 = akb09 * 1.e-6
+      akb10 = akb10 * 1.e-6
+      akb11 = akb11 * 1.e-3
+      akb12 = akb12 * 1.e-3
+      akb13 = akb13 * 1.e-3
+      akb14 = akb14 * 1.e-3
+      akb15 = akb15 * 1.e-3
+      akb16 = akb16 * 1.e-3
+      akb17 = akb17 * 1.e-3
+      akb18 = akb18 * 1.e-3
+      akb19 = akb19 * 1.e-3
+      akb20 = akb20 * 1.e-3
+      akb21 = akb21 * 1.e-6
+      akb22 = akb22 * 1.e-6
+      akb23 = akb23 * 1.e-6
+      akb24 = akb24 * 1.e-3
+      akb25 = akb25 * 1.e-3
+
+!--------------------------------------------------------------------------
+      ah2   = adns(1) / dml(1)
+!      ao2   = adns(2) / dml(2)
+!      ah    = adns(3) / dml(3)
+!      ao    = adns(4) / dml(4)
+!      aoh   = adns(5) / dml(5)
+!      ah2o  = adns(6) / dml(6)
+!      aho2  = adns(7) / dml(7)
+!      ah2o2 = adns(8) / dml(8)
+!      an2   = adns(9) / dml(9)
+!
+!--------------------------------------------------------------------------
+!
+!    kf[ ][ ] : rection rate constant * mole density
+!
+      akfc01 = akf01 * ah    * ao2
+      akfc02 = akf02 * ah    * ao2
+      akfc03 = akf03 * ah    * ao2
+      akfc04 = akf04 * ah    * ao2
+      akfc05 = akf05 * ah2o2
+      akfc06 = akf06 * aoh   * ah2o2
+      akfc07 = akf07 * aoh   * aho2
+      akfc08 = akf08 * aho2  * aho2
+      akfc09 = akf09 * ah2o          * am09
+      akfc10 = akf10 * ah2o          * ah2o
+      akfc11 = akf11 * aoh   * aoh
+      akfc12 = akf12 * ao    * ah2
+      akfc13 = akf13 * ah2   * aoh
+      akfc14 = akf14 * ah    * aho2
+      akfc15 = akf15 * ah    * aho2
+      akfc16 = akf16 * ah    * aho2
+      akfc17 = akf17 * ao    * aho2
+      akfc18 = akf18 * ah2o2 * ah
+      akfc19 = akf19 * ah2o2 * ah
+      akfc20 = akf20 * ah2o2 * ao
+      akfc21 = akf21 * ah2           * am21
+      akfc22 = akf22 * ah2           * ah2
+      akfc23 = akf23 * ah2           * am23
+      akfc24 = akf24 * ao    * ao    * am24
+      akfc25 = akf25 * ao    * ah    * am25
+
+!   kb[ ][ ] : rection rate constant * mole density
+
+      akbc01 = akb01 * aoh   * ao
+      akbc02 = akb02 * aho2
+      akbc03 = akb03 * aho2
+      akbc04 = akb04 * aho2
+      akbc05 = akb05 * aoh   * aoh
+      akbc06 = akb06 * ah2o  * aho2
+      akbc07 = akb07 * ah2o  * ao2
+      akbc08 = akb08 * ah2o2 * ao2
+      akbc09 = akb09 * ah    * aoh   * am09
+      akbc10 = akb10 * aoh   * ah    * ah2o
+      akbc11 = akb11 * ah2o  * ao
+      akbc12 = akb12 * ah    * aoh
+      akbc13 = akb13 * ah2o  * ah
+      akbc14 = akb14 * aoh   * aoh
+      akbc15 = akb15 * ah2o  * ao
+      akbc16 = akb16 * ah2   * ao2
+      akbc17 = akb17 * aoh   * ao2
+      akbc18 = akb18 * aho2  * ah2
+      akbc19 = akb19 * ah2o  * aoh
+      akbc20 = akb20 * aoh   * aho2
+      akbc21 = akb21 * ah    * ah    * am21
+      akbc22 = akb22 * ah    * ah    * ah2
+      akbc23 = akb23 * ah    * ah    * am23
+      akbc24 = akb24 * ao2           * am24
+      akbc25 = akb25 * aoh           * am25
+
+
+!    RR = kf[ ][ ] - kb[ ][ ]
+
+      ar01 = akfc01 - akbc01
+      ar02 = akfc02 - akbc02
+      ar03 = akfc03 - akbc03
+      ar04 = akfc04 - akbc04
+      ar05 = akfc05 - akbc05
+      ar06 = akfc06 - akbc06
+      ar07 = akfc07 - akbc07
+      ar08 = akfc08 - akbc08
+      ar09 = akfc09 - akbc09
+      ar10 = akfc10 - akbc10
+      ar11 = akfc11 - akbc11
+      ar12 = akfc12 - akbc12
+      ar13 = akfc13 - akbc13
+      ar14 = akfc14 - akbc14
+      ar15 = akfc15 - akbc15
+      ar16 = akfc16 - akbc16
+      ar17 = akfc17 - akbc17
+      ar18 = akfc18 - akbc18
+      ar19 = akfc19 - akbc19
+      ar20 = akfc20 - akbc20
+      ar21 = akfc21 - akbc21
+      ar22 = akfc22 - akbc22
+      ar23 = akfc23 - akbc23
+      ar24 = akfc24 - akbc24
+      ar25 = akfc25 - akbc25
+
+!   RR of each species
+
+      awh2   = dml(1) * (-ar12 -ar13 +ar16 +ar18 -ar21 -ar22 -ar23)
+      awo2   = dml(2) * (-ar01 -ar02 -ar03 -ar04 +ar07 +ar08 +ar16            &
+      &                  +ar17 +ar24)
+      awh    = dml(3) * (-ar01 -ar02 -ar03 -ar04 +ar09 +ar10 +ar12            &
+      &                  +ar13 -ar14 -ar15 -ar16 -ar18 -ar19 +ar21            &
+      &                  +ar21 +ar22 +ar22 +ar23 +ar23 -ar25)
+      awo    = dml(4) * (+ar01 +ar11 -ar12 +ar15 -ar17 -ar20 -ar24            &
+      &                  -ar24 -ar25)
+      awoh   = dml(5) * (+ar01 +ar05 +ar05 -ar06 -ar07 +ar09 +ar10            &
+      &                  -ar11 -ar11 +ar12 -ar13 +ar14 +ar14 +ar17            &
+      &                  +ar19 +ar20 +ar25)
+      awh2o  = dml(6) * (+ar06 +ar07 -ar09 -ar10 +ar11 +ar13 +ar15            &
+      &                  +ar19)
+      awho2  = dml(7) * (+ar02 +ar03 +ar04 +ar06 -ar07 -ar08 -ar08            &
+      &                  -ar14 -ar15 -ar16 -ar17 +ar18 +ar20)
+      awh2o2 = dml(8) * (-ar05 -ar06 +ar08 -ar18 -ar19 -ar20)
+
+      !write(6,*) awh2, awo2, awh, awo, awoh
+
+!----------------------------------------------------------------------
+!    MTS method
+
+!    make reaction time scale
+      ath2  = adns(1)*1.d-3*aflgm1/abs(awh2+aeps)                             &
+  &         + 1.d0-aflgm1
+      ato2  = adns(2)*1.d-3*aflgm2/abs(awo2+aeps)                             &
+  &         + 1.d0-aflgm2
+      ath   = adns(3)*1.d-3*aflgm3/abs(awh+aeps)                              &
+  &         + 1.d0-aflgm3
+      ato   = adns(4)*1.d-3*aflgm4/abs(awo+aeps)                              &
+  &         + 1.d0-aflgm4
+      atoh  = adns(5)*1.d-3*aflgm5/abs(awoh+aeps)                             &
+  &         + 1.d0-aflgm5
+      ath2o = adns(6)*1.d-3*aflgm6/abs(awh2o+aeps)                            &
+  &         + 1.d0-aflgm6
+      atho2 = adns(7)*1.d-3*aflgm7/abs(awho2+aeps)                            &
+  &         + 1.d0-aflgm7
+      ath2o2= adns(8)*1.d-3*aflgm8/abs(awh2o2+aeps)                           &
+  &         + 1.d0-aflgm8
+
+!    ignore uninvolved chemical species
+      afg   = a05 + sign(a05, ath2-atmn)
+      ath2  = ath2  *afg + 1.d0-afg
+      afg   = a05 + sign(a05, ato2-atmn)
+      ato2  = ato2  *afg + 1.d0-afg
+      afg   = a05 + sign(a05, ath -atmn)
+      ath   = ath   *afg + 1.d0-afg
+      afg   = a05 + sign(a05, ato -atmn)
+      ato   = ato   *afg + 1.d0-afg
+      afg   = a05 + sign(a05, atoh-atmn)
+      atoh  = atoh  *afg + 1.d0-afg
+      afg   = a05 + sign(a05, ath2o-atmn)
+      ath2o = ath2o *afg + 1.d0-afg
+      afg   = a05 + sign(a05, atho2-atmn)
+      atho2 = atho2 *afg + 1.d0-afg
+      afg   = a05 + sign(a05, ath2o2-atmn)
+      ath2o2= ath2o2*afg + 1.d0-afg
+
+
+!    make minimum reaction time scale
+      adlt1 = 0.8d0*min(ath2,ato2,ath,ato,atoh,ath2o,atho2,ath2o2)
+      adlt2 = max(adlt1,atmn)
+      atmx = delt - atime
+      adlt = min(adlt2,atmx)
+
+      awh2  = adlt*awh2/au
+      awo2  = adlt*awo2/au
+      awh   = adlt*awh/au
+      awo   = adlt*awo/au
+      awoh  = adlt*awoh/au
+      awh2o = adlt*awh2o/au
+      awho2 = adlt*awho2/au
+      awh2o2= adlt*awh2o2/au
+
+      adns(1) = adns(1) + aflgm1*awh2
+      adns(2) = adns(2) + aflgm2*awo2
+      adns(3) = adns(3) + aflgm3*awh
+      adns(4) = adns(4) + aflgm4*awo
+      adns(5) = adns(5) + aflgm5*awoh
+      adns(6) = adns(6) + aflgm6*awh2o
+      adns(7) = adns(7) + aflgm7*awho2
+      adns(8) = adns(8) + aflgm8*awh2o2
+
+!---------------------------------------------------------------------
+!    revision
+
+      !asgm = 0.0d0
+
+      !adns(1:lsp-1) = max(0.d0,adns(1:lsp-1)) ! mass correction
+
+      !asgm = sum(adns(1:lsp-1))
+
+      !asgm = arho / asgm
+
+      !adns(1:lsp-1) = adns(1:lsp-1) * asgm
+
+
+!---------------------------------------------------------------------
+
+!---------------------------------------------------------------------
+! update temperature
+
+      afm(1:lsp) = adns(1:lsp)*dmlru(1:lsp)
+
+      afmt = sum(afm(:))
+
+      at = atmp
+
+! --------------------
+! newton-rapson method
+! --------------------
+      do i = 1, itr
+
+        itm = 1 + int(a05 + sign(a05,(at - dplt)))
+
+        ab(1) = sum(afm(1:lsp)*dplh(1,1:lsp,itm)) - afmt
+        ab(2) = sum(afm(1:lsp)*dplh(2,1:lsp,itm)) * a12
+        ab(3) = sum(afm(1:lsp)*dplh(3,1:lsp,itm)) * a13
+        ab(4) = sum(afm(1:lsp)*dplh(4,1:lsp,itm)) * a14
+        ab(5) = sum(afm(1:lsp)*dplh(5,1:lsp,itm)) * a15
+        ab(6) = sum(afm(1:lsp)*dplh(6,1:lsp,itm)) + aeng
+
+        afdd = 2.d0*ab(2) + at*( 6.d0*ab(3)                                  &
+        &                 + at*(12.d0*ab(4) + at*(20.d0*ab(5))))
+        afd  = ab(1) + at*(2.d0*ab(2) + at*(3.d0*ab(3)                       &
+        &            + at*(4.d0*ab(4) + at*(5.d0*ab(5)))))
+        af   = at*(ab(1) + at*(ab(2) + at*(ab(3) &
+        &    + at*(ab(4) + at*ab(5)))))  + ab(6)
+
+        addd = afdd*af/afd
+
+        adt  = af/(afd-a05*addd)
+!        adt  = af/afd
+
+        at = at - adt
+        if (abs(adt) < aerr) exit
+
+      end do
+
+      atmp = at
+!      write(6,*) "after newton", m, awh2, awo2
+
+!-----------------------------------------
+! update aflg(i) (, which represents frozen species)
+! -----------------------------------------
+
+    aaa = abs(awh2)-aber
+    abb = abs(awo2)/(adns(2)-awo2+aeps) - arer
+    aflgm2 = a05+ sign(a05,aaa*abb*min(aaa,abb))
+
+    aaa = abs(awh)-aber
+    abb = abs(awh)/(adns(3)-awh+aeps) - arer
+    aflgm3 = a05+ sign(a05,aaa*abb*min(aaa,abb))
+
+    aaa = abs(awo)-aber
+    abb = abs(awo)/(adns(4)-awo+aeps) - arer
+    aflgm4 = a05+ sign(a05,aaa*abb*min(aaa,abb))
+
+    aaa = abs(awoh)-aber
+    abb = abs(awoh)/(adns(5)-awoh+aeps) - arer
+    aflgm5 = a05+ sign(a05,aaa*abb*min(aaa,abb))
+
+    aaa = abs(awh2o)-aber
+    abb = abs(awh2o)/(adns(6)-awh2o+aeps) - arer
+    aflgm6 = a05+ sign(a05,aaa*abb*min(aaa,abb))
+
+    aaa = abs(awho2)-aber
+    abb = abs(awho2)/(adns(7)-awho2+aeps) - arer
+    aflgm7 = a05+ sign(a05,aaa*abb*min(aaa,abb))
+
+    aaa = abs(awh2o2)-aber
+    abb = abs(awh2o2)/(adns(8)-awh2o2+aeps) - arer
+    aflgm8 = a05+ sign(a05,aaa*abb*min(aaa,abb))
+
+!-----------------------------------------------------
+
+    atime = atime + adlt
+
+    if (atime>=delt)exit
+
+    !write(6,*) atmp
+
+  end do
+
+!--------------------------------------------------------------------------
+! integration for each species
+!--------------------------------------------------------------------------
+
+      amss = dcnv(lmss)
+      rmsf(:) = adns(:)/amss
+
+
+      !select case(btyp(1:2))
+      !case('zn')
+      !  rmsf(1) = rmsf(1) + ddltx * awh2   / amss
+      !  rmsf(2) = rmsf(2) + ddltx * awo2   / amss
+      !  rmsf(3) = rmsf(3) + ddltx * awh    / amss
+      !  rmsf(4) = rmsf(4) + ddltx * awo    / amss
+      !  rmsf(5) = rmsf(5) + ddltx * awoh   / amss
+      !  rmsf(6) = rmsf(6) + ddltx * awh2o  / amss
+      !  rmsf(7) = rmsf(7) + ddltx * awho2  / amss
+      !  rmsf(8) = rmsf(8) + ddltx * awh2o2 / amss
+
+      !case('wk')
+      !  rmsf(1) = rmsf(1) + (awh2   / amss - rmsf(1)*dcvt)*ddltx
+      !  rmsf(2) = rmsf(2) + (awo2   / amss - rmsf(2)*dcvt)*ddltx
+      !  rmsf(3) = rmsf(3) + (awh    / amss - rmsf(3)*dcvt)*ddltx
+      !  rmsf(4) = rmsf(4) + (awo    / amss - rmsf(4)*dcvt)*ddltx
+      !  rmsf(5) = rmsf(5) + (awoh   / amss - rmsf(5)*dcvt)*ddltx
+      !  rmsf(6) = rmsf(6) + (awh2o  / amss - rmsf(6)*dcvt)*ddltx
+      !  rmsf(7) = rmsf(7) + (awho2  / amss - rmsf(7)*dcvt)*ddltx
+      !  rmsf(8) = rmsf(8) + (awh2o2 / amss - rmsf(8)*dcvt)*ddltx
+
+      !end select
+
+      asum = 0.
+      do i = 1, lsp
+        asum = asum + rmsf(i)
+        if (rmsf(i) < 0.d0) then
+          write(6,*) ' mass fraction is negative!!',rmsf(i),amss,awo2
+          stop
+        end if
+      end do
+
+      do i = 1, lsp
+        rmsf(i) = rmsf(i) / asum
+      end do
+
+      !write(6,*) rmsf(:)
+      !write(6,*) m
+
+!-------------------------------------------------------------------------
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+end subroutine isrce_mts
 
 !==========================================================================
 
@@ -1799,6 +2733,7 @@ subroutine ioutp(efile,rmh2)
 
   implicit none
   real(8), intent(in) :: rmh2
+  real(8) :: ayi(8)
   integer :: i
   character :: efile*4
 !--------------------------------------------------------------------------
@@ -1812,35 +2747,35 @@ subroutine ioutp(efile,rmh2)
   write(6,*) ' files are opened !!'
   write(6,*) ' '
 
-  open(10,file=brct(1:6)//'-1', form='formatted')
-  open(11,file=brct(1:6)//'-2', form='formatted')
-  open(12,file=brct(1:6)//'-3', form='formatted')
-  open(13,file=brct(1:6)//'-4', form='formatted')
-  open(14,file=brct(1:6)//'-5', form='formatted')
+  open(10,file='1dsteady.csv', form='formatted')
+  !open(11,file=brct(1:6)//'-2', form='formatted')
+  !open(12,file=brct(1:6)//'-3', form='formatted')
+  !open(13,file=brct(1:6)//'-4', form='formatted')
+  !open(14,file=brct(1:6)//'-5', form='formatted')
 
 
 !--------------------------------------------------------------------------
   elseif (efile(1:4) == 'init') then
 !--------------------------------------------------------------------------
 
-
-  write(10,'(6(e13.5))') -1., (dflw(i),i=lr,lp)
-  write(11,'(6(e13.5))') -1., (dflw(i),i=l1,l5)
-  write(12,'(6(e13.5))') -1., (dflw(i),i=l6,l9)
-  write(13,'(6(e13.5))') -1., (dflw(i),i=lh,la)
-  write(14,'(2(e13.5))') -1., rmh2
+  ayi(:) = dflw(1:8) / dflw(lr)
+  write(10,200) dflw(lt),dflw(lp),ayi(l1),ayi(l2),ayi(l3),ayi(l4),ayi(l5),ayi(l6),ayi(l7),ayi(l8)
+  !write(11,'(6(e13.5))') -1., (dflw(i),i=l1,l5)
+  !write(12,'(6(e13.5))') -1., (dflw(i),i=l6,l9)
+  !write(13,'(6(e13.5))') -1., (dflw(i),i=lh,la)
+  !write(14,'(2(e13.5))') -1., rmh2
 
 
 !--------------------------------------------------------------------------
   elseif (efile(1:4) == 'data') then
 !--------------------------------------------------------------------------
 
-
-  write(10,'(6(e13.5))') ddgd, (dflw(i),i=lr,lp)
-  write(11,'(6(e13.5))') ddgd, (dflw(i),i=l1,l5)
-  write(12,'(6(e13.5))') ddgd, (dflw(i),i=l6,l9)
-  write(13,'(6(e13.5))') ddgd, (dflw(i),i=lh,la)
-  write(14,'(3(e13.5))') ddgd, rmh2, dmc
+  ayi(:) = dflw(1:8) / dflw(lr)
+  write(10,200) dflw(lt),dflw(lp),ayi(l1),ayi(l2),ayi(l3),ayi(l4),ayi(l5),ayi(l6),ayi(l7),ayi(l8)
+  !write(11,'(6(e13.5))') ddgd, (dflw(i),i=l1,l5)
+  !write(12,'(6(e13.5))') ddgd, (dflw(i),i=l6,l9)
+  !write(13,'(6(e13.5))') ddgd, (dflw(i),i=lh,la)
+  !write(14,'(3(e13.5))') ddgd, rmh2, dmc
 
 
 !--------------------------------------------------------------------------
@@ -1856,6 +2791,7 @@ subroutine ioutp(efile,rmh2)
 !--------------------------------------------------------------------------
   end if
 !--------------------------------------------------------------------------
+  200 format(e13.5,9(',',e13.5))
 !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 end subroutine ioutp

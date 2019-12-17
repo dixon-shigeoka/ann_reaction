@@ -1,5 +1,26 @@
-program steadystanford
-use iso_c_binding
+module steadystanford
+  implicit none
+  real(8), parameter :: dplt = 1000.d0
+  real(8), parameter :: dru  = 8314.4d0
+  real(8), parameter :: a05  = 0.5d0
+  real(8), parameter :: epsl = 1.d-3
+  integer, parameter :: jmax = 1000000001
+  integer, parameter :: l1=1, l2=2, l3=3, l4=4, l5=5, l6=6, l7=7, l8=8, l9=9, &
+       &                     lfl=3, lsp=9, lh=10, la=11, lr=lsp+1, lu=lsp+2,       &
+       &                     le=lsp+3, lt=lsp+4, lp=lsp+5, lg=lsp+6, imax=lg,      &
+       &                     lmss=1, lmmt=2, leng=3, iplus=3, iimax=imax+iplus
+  real(8), allocatable, save :: dflw(:), dcnv(:), dmh2(:), dtime(:), dml(:),  &
+       &                             dplh(:,:,:)
+  real(8), save :: dcvt, dcuv, ddltx
+  real(8) :: ddgd, au0, dmc
+  integer :: jend, lstp, lint
+  character :: bdbg*4, brct*6, btyp*3
+
+contains
+
+
+!---------------------------------------------------------------------------
+  subroutine main
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 !
 !     this program is created for estimating detonation profile
@@ -17,21 +38,6 @@ use iso_c_binding
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
   implicit none
-  real(8), parameter :: dplt = 1000.d0
-  real(8), parameter :: dru  = 8314.4d0
-  real(8), parameter :: a05  = 0.5d0
-  real(8), parameter :: epsl = 1.d-3
-  integer, parameter :: jmax = 1000000001
-  integer, parameter :: l1=1, l2=2, l3=3, l4=4, l5=5, l6=6, l7=7, l8=8, l9=9, &
-  &                     lfl=3, lsp=9, lh=10, la=11, lr=lsp+1, lu=lsp+2,       &
-  &                     le=lsp+3, lt=lsp+4, lp=lsp+5, lg=lsp+6, imax=lg,      &
-  &                     lmss=1, lmmt=2, leng=3, iplus=3, iimax=imax+iplus
-  real(8), allocatable, save :: dflw(:), dcnv(:), dmh2(:), dtime(:), dml(:),  &
-  &                             dplh(:,:,:)
-  real(8), save :: dcvt, dcuv, ddltx
-  real(8) :: ddgd, au0, dmc
-  integer :: jend, lstp, lint
-  character :: bdbg*4, brct*6, btyp*3
 
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 !
@@ -86,8 +92,7 @@ use iso_c_binding
   call iehrl
 
 !---------------------------------------------------------------------------
-
-contains
+end subroutine main
 
 !===========================================================================
 
@@ -277,7 +282,7 @@ subroutine icond
 !------------------------------------------------------------------------
 !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-end subroutine icond
+end
 
 !========================================================================
 
@@ -677,7 +682,6 @@ subroutine iintg
 
   implicit none
 
-  real(c_double) :: ann_msf(8), ann_temp, ann_pres, temp, pres
   real(8), allocatable :: amsf(:), adns(:), ahhi(:), acpi(:),                 &
   &                       pbbb(:,:), acc(:)
   real(8) :: aerr, arr, amss, ammt, aeng, t1, t2
@@ -706,13 +710,13 @@ subroutine iintg
 !   for interface to C++
 !---------------------------------------------------------------------------
 
-  interface
-    subroutine ann_integrator(ann_t,ann_p,ann_m) bind(c,name='prediction')
-      import
-      real(c_double), intent(in), value :: ann_t, ann_p
-      real(c_double), intent(inout) :: ann_m(8)
-    end subroutine ann_integrator
-  end interface
+  !interface
+  !  subroutine ann_integrator(ann_t,ann_p,ann_m) bind(c,name='prediction')
+  !    import
+  !    real(c_double), intent(in) :: ann_t, ann_p
+  !    real(c_double), intent(inout) :: ann_m(8)
+  !  end subroutine ann_integrator
+  !end interface
   !interface
   !  subroutine ann_integrator() bind(c,Name='prediction')
   !    import
@@ -736,11 +740,10 @@ subroutine iintg
 
   case('zn')
 
-    !  call isrce (amsf)
-    ann_temp = dflw(lt)
-    ann_pres = dflw(lp)
-    amsf(1:lsp) = dflw(1:lsp)/dflw(lr)
-    call ann_integrator(ann_temp,ann_pres,amsf)
+    call isrce (amsf)
+    !ann_temp = dflw(lt)
+    !ann_pres = dflw(lp)
+    !call ann_integrator(ann_temp,ann_pres,amsf)
 
   case('wk')
 
@@ -903,10 +906,6 @@ subroutine iintg
 ! half-reaction time
   adt = ddltx / avel
   dtime(lstp+1) = dtime(lstp) + adt
-
-  if(isnan(addd) .eqv. .true.) then
-    stop '!!DIVERGED!!'
-  end if
 
 !---------------------------------------------------------------------------
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1862,4 +1861,4 @@ end subroutine ioutp
 
 !==========================================================================
 
-end program steadystanford
+end module steadystanford

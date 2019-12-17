@@ -1,30 +1,64 @@
 import tensorflow as tf
-import os
+from tensorflow.python.keras.models import load_model
+from tensorflow.python.keras import backend as K
+from tensorflow.python.framework.graph_util import convert_variables_to_constants
+import numpy as np
+import json
 
-abspath = os.path.dirname(os.path.abspath(__file__))
-model_dir = abspath + '/learned_model/model_for_c++/'
-#output_node_names = ['sigmoid/Sigmoid']
-output_node_names = "activation_3/Sigmoid"
+def freeze_session(sess, keep_var_names=None, output_names=None, clear_devices=True):
+    graph = sess.graph
+    with graph.as_default():
+        freeze_var_names = list(set(v.op.name for v in tf.global_variables()).difference(keep_var_names or []))
+        output_names = output_names or []
+        output_names += [v.op.name for v in tf.global_variables()]
+        input_graph_def = graph.as_graph_def()
+        if clear_devices:
+            for node in input_graph_def.node:
+                node.device = ''
+        frozen_graph = convert_variables_to_constants(sess, input_graph_def, output_names, freeze_var_names)
+        return frozen_graph
 
-def main():
+def convert_keras_to_tensorflow(keras_model_filename, tf_model_filename):
+    model = load_model(keras_model_filename)
+    model.summary()
+
+    #重みcheck
+    W1 = model.layers[0].get_weights()[0]
+    print(model.layers[0])  # 重みの値をプリント
+    print(W1)  # 重みの値をプリント
+    #W1 = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="dense_1/kernel")[0]  # dense_1の重み
+
+    #with tf.Session() as sess:
+    #    sess.run(tf.global_variables_initializer())  # 変数を初期化
+    #    print(W1)
+    #    print(W1.eval())  # 重みの値をプリント
+
+    frozen_graph = freeze_session(K.get_session(), output_names=[out.op.name for out in model.outputs])
+    tf.train.write_graph(frozen_graph, './', tf_model_filename, as_text=False)
+
+
+def get_model_info(tf_model_filename):
+    ops = {}
     with tf.Session() as sess:
-        # Restore the graph
-        saver = tf.train.import_meta_graph(model_dir + "model.meta")
+        with tf.gfile.GFile(tf_model_filename, 'rb') as f:
+            graph_def = tf.GraphDef()
+            graph_def.ParseFromString(f.read())
+            sess.graph.as_default()
+            _ = tf.import_graph_def(graph_def)
+            for op in tf.get_default_graph().get_operations():
+                ops[op.name] = [str(output) for output in op.outputs]
+        writer = tf.summary.FileWriter('./logs')
+        writer.add_graph(sess.graph)
+        writer.flush()
+        writer.close()
 
-        # Load weights
-        saver.restore(sess, model_dir + 'model.ckpt')
-
-        # Freeze the graph
-        frozen_graph_def = tf.graph_util.convert_variables_to_constants(
-            sess,
-            sess.graph_def,
-            output_node_names.split(",")
-            )
-
-        # Save the frozen graph
-        with open(model_dir + 'frozen_graph.pb', 'wb') as f:
-            f.write(frozen_graph_def.SerializeToString())
+    with open(tf_model_filename+'_param.json', 'w') as f:
+        f.write(json.dumps(ops))
 
 
 if __name__ == '__main__':
-    main()
+    # convert
+    keras_model_filename = './learned_model/stanford_model.h5'
+    tf_model_filename = './cpp/resource/stanford_model.pb'
+    convert_keras_to_tensorflow(keras_model_filename, tf_model_filename)
+    get_model_info(tf_model_filename)

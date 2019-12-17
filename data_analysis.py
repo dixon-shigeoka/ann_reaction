@@ -7,6 +7,7 @@ import matplotlib.ticker as ticker
 import matplotlib.colors
 import os
 import time
+import glob
 from sklearn import preprocessing
 #from vtk import *
 import vtk
@@ -21,50 +22,63 @@ abspath_model = abspath + '/learned_model/stanford_model.json'
 abspath_eval = abspath + '/output/x.csv'
 abspath_answer = abspath + '/output/y.csv'
 abspath_randt = abspath + '/output/randt.csv'
-abspath_flow = abspath + '/data/#flow.0124310.vts'
-print(abspath_x)
+#abspath_flow = abspath + '/data/#flow.0124310.vts'
+abspath_data = abspath + '/data/Planar_flow/'
 
 state_x = np.array(["temp","pres","H2","O2","H","O","OH","H2O","HO2","H2O2","N2","delt"])
 select  = np.array([0,5])
 
-# load a vtk file as input
-reader = vtk.vtkXMLStructuredGridReader()
-reader.SetFileName(abspath_flow)
-reader.Update()
+file_list = sorted(glob.glob('/share/data/Planar_flow/*.vts'))
+filt_temp = np.zeros([1,1])
+filt_pres = np.zeros([1,1])
 
-# Get the coordinates of nodes in the mesh
-nodes_vtk_array= reader.GetOutput().GetPoints().GetData()
+for i_file in range(len(file_list)):
+    # load a vtk file as input
+    reader = vtk.vtkXMLStructuredGridReader()
+    reader.SetFileName(file_list[i_file])
+    reader.Update()
 
-#The "Temperature" field is the third scalar in my vtk file
-print('get scalar data')
-temperature_vtk_array = reader.GetOutput().GetPointData().GetArray('Temperature [K]')
-pressure_vtk_array    = reader.GetOutput().GetPointData().GetArray('Pressure [MPa]')
-O_vtk_array    = reader.GetOutput().GetPointData().GetArray('   O')
+    # Get the coordinates of nodes in the mesh
+    nodes_vtk_array= reader.GetOutput().GetPoints().GetData()
 
-#Get the coordinates of the nodes and their temperatures
-print('change to numpy from vtk')
-nodes_nummpy_array = vtk_to_numpy(nodes_vtk_array)
-x,y,z= nodes_nummpy_array[:,0] , nodes_nummpy_array[:,1] , nodes_nummpy_array[:,2]
+    #The "Temperature" field is the third scalar in my vtk file
+    print('get scalar data')
+    temperature_vtk_array = reader.GetOutput().GetPointData().GetArray('Temperature [K]')
+    pressure_vtk_array    = reader.GetOutput().GetPointData().GetArray('Pressure [MPa]')
+    O_vtk_array    = reader.GetOutput().GetPointData().GetArray('   O')
 
-temperature_np = vtk_to_numpy(temperature_vtk_array)
-pressure_np    = vtk_to_numpy(pressure_vtk_array)
-O_np    = vtk_to_numpy(O_vtk_array)
-print(O_np.size)
+    #Get the coordinates of the nodes and their temperatures
+    print('change to numpy from vtk')
+    nodes_nummpy_array = vtk_to_numpy(nodes_vtk_array)
+    x,y,z= nodes_nummpy_array[:,0] , nodes_nummpy_array[:,1] , nodes_nummpy_array[:,2]
 
-#Data scanning and delete columun
-print('data scanning')
-counter_list = []
+    temperature_np = vtk_to_numpy(temperature_vtk_array)
+    pressure_np    = vtk_to_numpy(pressure_vtk_array)
+    O_np    = vtk_to_numpy(O_vtk_array)
+    print(O_np.size)
 
-for i in range(O_np.size):
-    if(O_np[i] < 0.01 and O_np[i] > 0 and temperature_np[i] > 400):
-        counter_list.append(i)
+    #Data scanning and delete columun
+    print('data scanning')
+    counter_list = []
+    print(len(counter_list))
 
-filt_temp = np.zeros([1,len(counter_list)])
-filt_pres = np.zeros([1,len(counter_list)])
+    for i in range(O_np.size):
+        if(O_np[i] < 0.01 and O_np[i] > 0 and temperature_np[i] > 1000):
+            counter_list.append(i)
 
-for i in range(len(counter_list)):
-    filt_temp[0,i] = temperature_np[counter_list[i]]
-    filt_pres[0,i] = pressure_np[counter_list[i]]
+            tmp_temp = np.zeros([1,len(counter_list)])
+            tmp_pres = np.zeros([1,len(counter_list)])
+
+    for i in range(len(counter_list)):
+        tmp_temp[0,i] = temperature_np[counter_list[i]]
+        tmp_pres[0,i] = pressure_np[counter_list[i]]
+
+    filt_temp = np.hstack((filt_temp, tmp_temp))
+    filt_pres = np.hstack((filt_pres, tmp_pres))
+
+
+filt_temp = np.delete(filt_temp,0,1)
+filt_pres = np.delete(filt_pres,0,1)
 
 
 #make histogram data
@@ -90,7 +104,7 @@ ax.set_ylabel(ylabel,fontsize=10)
 fig.colorbar(hist[3],ax=ax)
 #ax.set_title(title,fontsize=30,fontname='Times New Roman')
 
-print(hist)
+#print(hist)
 
 plt.savefig("histogram_plot.png")
 

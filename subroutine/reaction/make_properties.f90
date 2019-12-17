@@ -10,7 +10,8 @@ subroutine make_properties(dtmp,dprs,aYi,totaldens,aeng)
   implicit none
   integer :: i, itm
   real(8), intent(in) :: aYi(8), totaldens, aeng
-  real(8), intent(out) :: dtmp, dprs
+  real(8), intent(inout) :: dtmp
+  real(8), intent(out) :: dprs
   real(8), allocatable :: adns(:), afm(:), ab(:), dml(:), dmlr(:), dmlru(:), dplh(:,:,:), atmw(:)
   real(8) :: at, afmt, afdd, afd, af, addd, adt, druo, phti, ahti, arho, atmp, ah
   real(8), parameter :: aerr = 1.d-12

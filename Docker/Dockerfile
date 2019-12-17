@@ -33,7 +33,8 @@ RUN pip install \
     scipy \
     tqdm \
     opencv-python \
-    vtk
+    vtk \
+    pyautogui
 
 RUN mkdir /root/.keras
 COPY Docker-keras.json /root/.keras/keras.json

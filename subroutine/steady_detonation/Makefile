@@ -2,9 +2,9 @@
 # Makefile
 #===============================================================================
 
-ISTDIR = ../
+ISTDIR = ../../library/
 OBJDIR = ./lib
-NAME   = make_constant.so
+NAME   = 1dsteady.so
 TARGET = $(ISTDIR)/$(NAME)
 #FC = ifort
 FC = gfortran
@@ -57,8 +57,7 @@ ifeq ($(DEBUGOMP),on) #make all DEBUGOMP=on (command line)
   FFLAGS+= -fpp -module $(OBJDIR)
 endif
 
-FOBJ+= mod_parameter.o         mod_globals.o                    \
-       mod_function.o          make_constant.o        \
+FOBJ+= 1dsteady.o      \
 
 .SUFFIXES : .o .f90
 

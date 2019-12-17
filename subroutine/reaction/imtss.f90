@@ -280,6 +280,7 @@ subroutine imtss(dtmp,dprs,aYi,delt)
 
   aflag = a05 + sign(a05,(atmp - a400))
 
+
 ! flag for frozen species :: aflgmi (i species)
   aflgm1 = 1.d0 * aflag
   aflgm2 = 1.d0 * aflag

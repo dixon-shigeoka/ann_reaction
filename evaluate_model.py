@@ -21,7 +21,7 @@ print(abspath_x)
 
 
 #ctypesの引数設定
-fn = np.ctypeslib.load_library("mtsdriver.so",".")
+fn = np.ctypeslib.load_library("library/mtsdriver.so",".")
 fn.imtss_.argtypes = [
     c.POINTER(c.c_double),
     c.POINTER(c.c_double),
@@ -30,7 +30,7 @@ fn.imtss_.argtypes = [
 ]
 fn.imtss_.restype = c.c_void_p
 
-fn1 = np.ctypeslib.load_library("make_constant.so",".")
+fn1 = np.ctypeslib.load_library("library/make_constant.so",".")
 fn1.make_constant_.argtypes = [
     c.POINTER(c.c_double),
     c.POINTER(c.c_double),
@@ -40,7 +40,7 @@ fn1.make_constant_.argtypes = [
 ]
 fn1.make_constant_.restype = c.c_void_p
 
-fn2 = np.ctypeslib.load_library("make_properties.so",".")
+fn2 = np.ctypeslib.load_library("library/make_properties.so",".")
 fn2.make_properties_.argtypes = [
     c.POINTER(c.c_double),
     c.POINTER(c.c_double),
@@ -50,7 +50,7 @@ fn2.make_properties_.argtypes = [
 ]
 fn2.make_properties_.restype = c.c_void_p
 
-fn3 = np.ctypeslib.load_library("pidriver.so",".")
+fn3 = np.ctypeslib.load_library("library/pidriver.so",".")
 fn3.pointimplicit_.argtypes = [
     c.POINTER(c.c_double),
     c.POINTER(c.c_double),
@@ -86,9 +86,20 @@ train_int_zeros = np.zeros([1,1])
 #dtmp = train_x[start,0]
 #dprs = train_x[start,1]
 dtmp_init = 1763.58641059815
-#dprs_init = 1.01325e5 * 1.5
 dprs_init = 3343232.39720150
-aYi_init = train_x[start,2:11]
+#dtmp_init =1355
+#dprs_init = 1.01325e5 * 1.5
+
+aMi = np.array([2.016,32.000,1.008,16.000,17.008,18.016,33.008,34.016,28.016])
+aMolarRatio = np.array([2,1,0,0,0,0,0,0,0])
+#aMolarRatio = np.where(aMolarRatio == 0,aemn,aMolarRatio)
+#aMolarRatio[8] = 0
+aTotalMass = np.dot(aMi,aMolarRatio)
+aMixMolarRatio = np.multiply(aMi,aMolarRatio)
+aYi = aMixMolarRatio/aTotalMass
+aYi_init  = aYi.reshape((1,9))
+#aYi_init = train_x[start,2:11]
+
 train_int_append = np.append(train_int_zeros,dtmp_init)
 train_int_append = np.append(train_int_append,dprs_init)
 train_int_append = np.append(train_int_append,aYi_init)
@@ -102,14 +113,15 @@ dtmp = c.c_double(dtmp_init)     #ctypes形式でラップ
 dprs = c.c_double(dprs_init)
 totaldens = c.c_double(totaldens)
 aeng = c.c_double(aeng)
+print(dtmp,dprs,aYi)
 
 fn1.make_constant_(c.byref(dtmp),c.byref(dprs),aYi_init,c.byref(totaldens),c.byref(aeng))
 
 totaldens = totaldens.value
 aeng = aeng.value
 
-#train_x = train_x[0:200,:]
-#train_y = train_y[0:200,:]
+print(dtmp,dprs)
+
 train_x = np.delete(train_x,10,1)
 train_x = np.delete(train_x,10,1)
 train_y = np.delete(train_y,10,1)
